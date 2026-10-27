@@ -278,12 +278,12 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
       return;
     }
     const label = which === "a" ? "A" : "B";
-    let text = `${label} (${x}, ${y})  Y ${pixel.y} U ${pixel.u} V ${pixel.v} R ${pixel.r} G ${pixel.g} B ${pixel.b}`;
+    let text = `${label} (${x}, ${y}) | Y ${pixel.y} U ${pixel.u} V ${pixel.v} | R ${pixel.r} G ${pixel.g} B ${pixel.b}`;
     if (imageA && imageB) {
       const a = readPixel(imageA.data, imageA.spec, x, y, standard, imageA.alignment);
       const b = readPixel(imageB.data, imageB.spec, x, y, standard, imageB.alignment);
       if (a && b) {
-        text += `  Δ(B-A) R ${b.r - a.r} G ${b.g - a.g} B ${b.b - a.b}`;
+        text += ` | Δ(B-A) R ${b.r - a.r} G ${b.g - a.g} B ${b.b - a.b}`;
       }
     }
     deps.onReadout(text);
