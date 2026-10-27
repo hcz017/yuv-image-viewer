@@ -59,9 +59,17 @@ export function createSpecModal(container: HTMLElement): SpecModal {
       container.append(backdrop);
 
       const close = (value: boolean) => {
+        document.removeEventListener("keydown", onKeydown);
         backdrop.remove();
         resolve(value);
       };
+      const onKeydown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(false);
+        }
+      };
+      document.addEventListener("keydown", onKeydown);
       cancel.onclick = () => close(false);
       ok.onclick = () => {
         if (onSubmit()) {
@@ -73,15 +81,6 @@ export function createSpecModal(container: HTMLElement): SpecModal {
           close(false);
         }
       };
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") {
-            close(false);
-          }
-        },
-        { once: true }
-      );
     });
 
   return {

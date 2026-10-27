@@ -32,30 +32,33 @@ export function createAboutModal(): { show(deps: AboutModalDeps): void } {
       note.className = "muted";
       note.textContent = "本地 YUV 图像查看器，仅读取第一帧，支持 BT.601 / BT.709 Full range。";
 
+      const closeDialog = () => {
+        document.removeEventListener("keydown", onKeydown);
+        backdrop.remove();
+      };
+      const onKeydown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeDialog();
+        }
+      };
+
       const actions = document.createElement("div");
       actions.className = "modal-actions";
       const close = document.createElement("button");
       close.className = "primary";
       close.textContent = "关闭";
-      close.onclick = () => backdrop.remove();
+      close.onclick = closeDialog;
       actions.append(close);
 
       modal.append(title, version, platform, config, note, actions);
       backdrop.append(modal);
       backdrop.onclick = (event) => {
         if (event.target === backdrop) {
-          backdrop.remove();
+          closeDialog();
         }
       };
-      document.addEventListener(
-        "keydown",
-        (event) => {
-          if (event.key === "Escape") {
-            backdrop.remove();
-          }
-        },
-        { once: true }
-      );
+      document.addEventListener("keydown", onKeydown);
       document.body.append(backdrop);
     },
   };

@@ -129,6 +129,21 @@ button.primary:hover {
   background: var(--panel);
 }
 
+.format-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.format-control select {
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--panel);
+}
+
 .dropdown {
   position: absolute;
   top: calc(100% + 4px);

@@ -1,11 +1,13 @@
 import { initialState, type AppState } from "../../common/appState";
+import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { decodeConfig, encodeConfig, type AppConfig } from "../../common/config";
 import { neighborPath, sortRows } from "../../common/fileEntry";
 import { parseSizeCandidates } from "../../common/filenameParser";
 import { formatBytes } from "../../common/listMeta";
 import { createPathPolicy, type PathPolicy } from "../../common/pathPolicy";
 import { pushRecentDir } from "../../common/recentDirs";
-import type { FileRow, SortKey } from "../../common/types";
+import { makeSpec, validateSpec } from "../../common/spec";
+import type { FileRow, SortKey, YuvFormat } from "../../common/types";
 import { createAboutModal } from "./aboutModal";
 import { createCompareView } from "./compareView";
 import { createDelayedNotice } from "./delayedNotice";
@@ -58,6 +60,8 @@ async function main() {
   const scaleLabel = required("scale");
   const sidebar = required("sidebar");
   const splitter = required("splitter");
+  const formatControl = required("format-control");
+  const formatSelect = required("format") as HTMLSelectElement;
 
   const gate = { paused: false };
   let colorStandard: "bt601" | "bt709" = config.colorStandard === "bt709" ? "bt709" : "bt601";
@@ -101,6 +105,50 @@ async function main() {
   });
 
   stage.append(single.element, compare.element);
+
+  const FORMATS: YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010"];
+  for (const format of FORMATS) {
+    const option = document.createElement("option");
+    option.value = format;
+    option.textContent = format.toUpperCase();
+    formatSelect.append(option);
+  }
+
+  const syncFormatSelect = (format: YuvFormat) => {
+    formatSelect.value = format;
+  };
+
+  const switchFormat = (next: YuvFormat) => {
+    const image = single.currentImage();
+    if (!image) {
+      return;
+    }
+    const spec = makeSpec(
+      image.spec.width,
+      image.spec.height,
+      image.spec.stride,
+      image.spec.scanline,
+      next
+    );
+    const check = validateSpec(spec, image.data.length, maxTextureSize);
+    if (check.kind === "invalid") {
+      showBanner(`无法切换为 ${next.toUpperCase()}：${check.reason ?? "规格不合法"}`);
+      syncFormatSelect(image.spec.format);
+      return;
+    }
+    const detected = next === "p010" ? detectP010Alignment(image.data) : image.alignment;
+    const alignment: P010Alignment = detected === "unknown" ? "high" : detected;
+    if (!single.updateSpec(spec, alignment)) {
+      syncFormatSelect(image.spec.format);
+      return;
+    }
+    if (banner.textContent.startsWith("无法切换为")) {
+      showBanner("");
+    }
+    syncFormatSelect(next);
+  };
+
+  formatSelect.onchange = () => switchFormat(formatSelect.value as YuvFormat);
 
   const setStandard = (value: "bt601" | "bt709") => {
     colorStandard = value;
@@ -260,6 +308,7 @@ async function main() {
       }
       const payload = payloadOf(file, outcome.file);
       single.show(payload);
+      syncFormatSelect(payload.spec.format);
       store.dispatch({
         type: "loadCommit",
         token,
@@ -530,6 +579,7 @@ async function main() {
     stage.classList.toggle("hidden", inList);
     single.element.classList.toggle("hidden", kind !== "single");
     compare.element.classList.toggle("hidden", kind !== "compare");
+    formatControl.classList.toggle("hidden", kind !== "single");
     if (document.activeElement !== address) {
       address.value = state.dir;
     }

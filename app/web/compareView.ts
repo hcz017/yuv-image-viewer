@@ -49,16 +49,6 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
   syncInput.checked = true;
   syncLabel.append(syncInput, document.createTextNode("同步视图"));
 
-  const holdALabel = document.createElement("label");
-  const holdAInput = document.createElement("input");
-  holdAInput.type = "checkbox";
-  holdALabel.append(holdAInput, document.createTextNode("锁定 A"));
-
-  const holdBLabel = document.createElement("label");
-  const holdBInput = document.createElement("input");
-  holdBInput.type = "checkbox";
-  holdBLabel.append(holdBInput, document.createTextNode("锁定 B"));
-
   const swapButton = document.createElement("button");
   swapButton.textContent = "交换 A/B";
   swapButton.onclick = () => deps.onSwap();
@@ -71,7 +61,7 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
   oneButton.textContent = "1:1";
   oneButton.onclick = () => oneToOne();
 
-  toolbar.append(syncLabel, holdALabel, holdBLabel, swapButton, fitButton, oneButton);
+  toolbar.append(syncLabel, swapButton, fitButton, oneButton);
   element.append(toolbar);
 
   let rendererA: Renderer | null = null;
@@ -420,19 +410,15 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
     element,
     canvas,
     setImages(a, b) {
-      if (!holdAInput.checked) {
-        imageA = a;
-        rendererA?.disposeTextures();
-        if (a) {
-          rendererA = uploadPane("a");
-        }
+      imageA = a;
+      rendererA?.disposeTextures();
+      if (a) {
+        rendererA = uploadPane("a");
       }
-      if (!holdBInput.checked) {
-        imageB = b;
-        rendererB?.disposeTextures();
-        if (b) {
-          rendererB = uploadPane("b");
-        }
+      imageB = b;
+      rendererB?.disposeTextures();
+      if (b) {
+        rendererB = uploadPane("b");
       }
       labelA.textContent = imageA ? `A  ${imageA.name}` : "";
       labelB.textContent = imageB ? `B  ${imageB.name}` : "";

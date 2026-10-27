@@ -28,7 +28,7 @@ export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
       const entries = await deps.host.listDirEntries(node.path);
       node.children = entries
         .map(fromWireEntry)
-        .filter((entry) => entry.isDir)
+        .filter((entry) => entry.isDir && !entry.name.startsWith("."))
         .map(dirNode);
       node.expanded = true;
     } catch (error) {

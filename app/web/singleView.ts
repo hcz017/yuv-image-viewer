@@ -30,6 +30,7 @@ export interface SingleViewApi {
   readonly element: HTMLElement;
   readonly canvas: HTMLCanvasElement;
   show(image: ImagePayload): void;
+  updateSpec(spec: Spec, alignment: P010Alignment): boolean;
   clear(): void;
   setStandard(standard: ColorStandard): void;
   fit(): void;
@@ -272,6 +273,18 @@ export function createSingleView(deps: SingleViewDeps): SingleViewApi {
         deps.onScale(view.scale);
       }
       redraw();
+    },
+    updateSpec(spec, alignment) {
+      if (!image) {
+        return false;
+      }
+      image = { ...image, spec, alignment };
+      if (!uploadCurrent()) {
+        return false;
+      }
+      view = clampView(view, spec.width, spec.height, canvas.width, canvas.height);
+      redraw();
+      return true;
     },
     clear() {
       image = null;
