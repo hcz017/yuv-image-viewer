@@ -20,11 +20,12 @@ const buf = Buffer.alloc(total);
 
 let sampleIndex = 0;
 const writeSample = (offset, value) => {
-  const v = Math.max(0, Math.min(isP010 ? 1023 : 255, Math.round(value)));
+  const v = Math.max(0, Math.min(255, Math.round(value)));
   if (isP010) {
+    const tenBit = v * 4;
     const useLow =
       format === "p010-low" || (format === "p010-unknown" && sampleIndex % 2 === 1);
-    buf.writeUInt16LE(useLow ? v : (v << 6) & 0xffff, offset);
+    buf.writeUInt16LE(useLow ? tenBit : (tenBit << 6) & 0xffff, offset);
   } else {
     buf.writeUInt8(v, offset);
   }

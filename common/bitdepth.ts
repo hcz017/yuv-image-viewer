@@ -8,15 +8,26 @@ export function detectP010Alignment(data: Uint8Array): P010Alignment {
 
   let high = 0;
   let low = 0;
+  let maxWord = 0;
   for (let index = 0; index < words; index++) {
     const offset = index * 2;
     const value = data[offset] | (data[offset + 1] << 8);
+    if (value > maxWord) {
+      maxWord = value;
+    }
     if ((value & 0x3f) === 0) {
       high++;
     }
     if ((value & 0xfc00) === 0) {
       low++;
     }
+  }
+
+  if (maxWord === 0) {
+    return "unknown";
+  }
+  if (maxWord <= 0x3ff) {
+    return "low";
   }
 
   const highRatio = high / words;

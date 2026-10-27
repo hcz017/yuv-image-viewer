@@ -23,37 +23,13 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
   menus.className = "menus";
 
   let recentDirs: readonly string[] = [];
-  let openDropdown: HTMLElement | null = null;
+  let openPanel: HTMLElement | null = null;
+  let openAnchor: HTMLElement | null = null;
 
   const closeMenus = () => {
-    openDropdown?.remove();
-    openDropdown = null;
-  };
-
-  const dropdown = (anchor: HTMLElement, entries: Array<HTMLElement | "separator">) => {
-    closeMenus();
-    const panel = document.createElement("div");
-    panel.className = "dropdown";
-    for (const entry of entries) {
-      if (entry === "separator") {
-        const line = document.createElement("div");
-        line.className = "dropdown-separator";
-        panel.append(line);
-      } else {
-        panel.append(entry);
-      }
-    }
-    anchor.append(panel);
-    openDropdown = panel;
-    setTimeout(() => {
-      const dismiss = (event: MouseEvent) => {
-        if (!panel.contains(event.target as Node)) {
-          closeMenus();
-          document.removeEventListener("click", dismiss);
-        }
-      };
-      document.addEventListener("click", dismiss);
-    }, 0);
+    openPanel?.remove();
+    openPanel = null;
+    openAnchor = null;
   };
 
   const item = (label: string, onClick: () => void, shortcut?: string) => {
@@ -68,48 +44,79 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
       hint.textContent = shortcut;
       button.append(hint);
     }
-    button.onclick = () => {
+    button.onclick = (event) => {
+      event.stopPropagation();
       closeMenus();
       onClick();
     };
     return button;
   };
 
-  const fileButton = document.createElement("button");
-  fileButton.className = "menu-button";
-  fileButton.textContent = "文件";
+  const dropdown = (anchor: HTMLElement, entries: Array<HTMLElement | "separator">) => {
+    if (openAnchor === anchor) {
+      closeMenus();
+      return;
+    }
+    closeMenus();
+
+    const panel = document.createElement("div");
+    panel.className = "dropdown";
+    for (const entry of entries) {
+      if (entry === "separator") {
+        const line = document.createElement("div");
+        line.className = "dropdown-separator";
+        panel.append(line);
+      } else {
+        panel.append(entry);
+      }
+    }
+    anchor.append(panel);
+    openPanel = panel;
+    openAnchor = anchor;
+  };
+
   const modifier = navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl";
 
-  fileButton.onclick = (event) => {
-    event.stopPropagation();
+  const fileEntries = (): Array<HTMLElement | "separator"> => {
     const recent = document.createElement("div");
     recent.className = "dropdown-section";
     recent.textContent = "最近目录";
-    dropdown(fileButton, [
+
+    const entries: Array<HTMLElement | "separator"> = [
       item("打开文件…", deps.openFiles, `${modifier}+O`),
       item("打开文件夹…", deps.openFolder, `${modifier}+Shift+O`),
       "separator",
       recent,
       "separator",
       item("返回文件列表", deps.backToList, "Esc"),
-    ]);
+    ];
+
     recentDirs.forEach((dir) => {
       const entry = item(dir, () => deps.openRecent(dir));
       entry.classList.add("recent-item");
       entry.title = dir;
       recent.append(entry);
     });
+
+    return entries;
   };
 
-  const helpButton = document.createElement("button");
-  helpButton.className = "menu-button";
-  helpButton.textContent = "帮助";
-  helpButton.onclick = (event) => {
-    event.stopPropagation();
-    dropdown(helpButton, [item("关于 YUV Image Viewer", deps.showAbout)]);
+  const menu = (label: string, build: () => Array<HTMLElement | "separator">) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "menu";
+    const button = document.createElement("button");
+    button.className = "menu-button";
+    button.textContent = label;
+    button.onclick = (event) => {
+      event.stopPropagation();
+      dropdown(wrapper, build());
+    };
+    wrapper.append(button);
+    menus.append(wrapper);
   };
 
-  menus.append(fileButton, helpButton);
+  menu("文件", fileEntries);
+  menu("帮助", () => [item("关于 YUV Image Viewer", deps.showAbout)]);
 
   const spacer = document.createElement("div");
   spacer.className = "menubar-spacer";
@@ -132,11 +139,28 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
   standardLabel.append(standardText, select);
 
   container.append(brand, menus, spacer, standardLabel);
-  container.addEventListener("click", (event) => {
-    if (event.target === container) {
+
+  document.addEventListener("click", (event) => {
+    if (!openPanel) {
+      return;
+    }
+    const target = event.target as Node | null;
+    if (target && openPanel.contains(target)) {
+      return;
+    }
+    if (target instanceof Element && target.closest(".menu-button")) {
+      return;
+    }
+    closeMenus();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
       closeMenus();
     }
   });
+
+  window.addEventListener("blur", () => closeMenus());
 
   return {
     setRecent(dirs) {

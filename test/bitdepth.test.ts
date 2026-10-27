@@ -21,6 +21,16 @@ test("low-aligned p010 data is detected", () => {
   assert.equal(detectP010Alignment(words(values)), "low");
 });
 
+test("uniform low-aligned values are detected as low", () => {
+  const values = Array.from({ length: 1024 }, () => 128);
+  assert.equal(detectP010Alignment(words(values)), "low");
+});
+
+test("uniform high-aligned values are detected as high", () => {
+  const values = Array.from({ length: 1024 }, () => 128 << 6);
+  assert.equal(detectP010Alignment(words(values)), "high");
+});
+
 test("mixed data stays unknown", () => {
   const values = Array.from({ length: 1024 }, () => 0x1555);
   assert.equal(detectP010Alignment(words(values)), "unknown");

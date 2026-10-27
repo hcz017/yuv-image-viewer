@@ -80,6 +80,26 @@ test("resolveSpec guesses from the byte size when the name is generic", () => {
   }
 });
 
+test("resolveSpec prefers a padded layout when the byte size says so", () => {
+  const result = resolveSpec({ name: "clip_1920x1080.nv12", fileSize: 3342336, format: null });
+  assert.equal(result.kind, "resolved");
+  if (result.kind === "resolved") {
+    assert.equal(result.spec.width, 1920);
+    assert.equal(result.spec.height, 1080);
+    assert.equal(result.spec.stride, 2048);
+    assert.equal(result.spec.scanline, 1088);
+  }
+});
+
+test("resolveSpec keeps a filename spec when the file only has trailing bytes", () => {
+  const result = resolveSpec({ name: "clip_640x480.nv12", fileSize: 460800 + 16, format: null });
+  assert.equal(result.kind, "resolved");
+  if (result.kind === "resolved") {
+    assert.equal(result.spec.stride, 640);
+    assert.equal(result.spec.scanline, 480);
+  }
+});
+
 test("resolveSpec asks for a format when the extension is yuv", () => {
   assert.equal(resolveSpec({ name: "frame.yuv", fileSize: 460800, format: null }).kind, "chooseFormat");
 });

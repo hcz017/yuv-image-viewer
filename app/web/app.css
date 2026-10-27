@@ -96,6 +96,10 @@ button.primary:hover {
   position: relative;
 }
 
+.menu {
+  position: relative;
+}
+
 .menu-button {
   border: 0;
   background: transparent;
@@ -337,13 +341,16 @@ body.resizing {
   top: 0;
   z-index: 1;
   height: 30px;
-  padding: 0 12px;
+  padding: 0 9px;
   text-align: left;
   font-weight: 500;
   color: var(--muted);
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-table th:hover {
@@ -352,11 +359,36 @@ body.resizing {
 
 .file-table td {
   height: 30px;
-  padding: 0 12px;
+  padding: 0 9px;
   border-bottom: 1px solid #f0f2f4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-table th:nth-child(2),
+.file-table td:nth-child(2) {
+  width: 92px;
+}
+
+.file-table th:nth-child(3),
+.file-table td:nth-child(3) {
+  width: 60px;
+}
+
+.file-table th:nth-child(4),
+.file-table td:nth-child(4) {
+  width: 110px;
+}
+
+.file-table th:nth-child(5),
+.file-table td:nth-child(5) {
+  width: 78px;
+}
+
+.file-table th:nth-child(6),
+.file-table td:nth-child(6) {
+  width: 146px;
 }
 
 .file-table tbody tr {

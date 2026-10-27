@@ -263,6 +263,7 @@ export class Renderer {
     const uvHeight = spec.height / spec.scanline;
     const c = coefficients(this.standard);
 
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(scissor.x, scissor.y, Math.max(0, scissor.width), Math.max(0, scissor.height));
     gl.clearColor(0.05, 0.06, 0.07, 1);
@@ -300,6 +301,7 @@ export class Renderer {
 
   clear(scissor: ScissorRect) {
     const gl = this.gl;
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(scissor.x, scissor.y, Math.max(0, scissor.width), Math.max(0, scissor.height));
     gl.clearColor(0.05, 0.06, 0.07, 1);
