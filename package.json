@@ -1,0 +1,26 @@
+{
+  "name": "yuv-image-viewer",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Cross-platform local YUV image viewer (Windows / macOS / Ubuntu)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "test": "npm run compile && node --test \"out/test/*.test.js\"",
+    "app:build": "node scripts/build-app.mjs",
+    "app:dev": "npm run app:build && cd app && npx tauri dev",
+    "app:package": "npm run app:build && cd app && npx tauri build",
+    "check:version": "node scripts/check-version.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
+  }
+}

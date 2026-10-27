@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": ".",
+    "outDir": "out",
+    "types": ["node"]
+  },
+  "include": ["common/**/*.ts", "webview/**/*.ts", "app/web/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "out", "app/dist"]
+}

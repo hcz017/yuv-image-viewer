@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=YUV Image Viewer
+Comment=Local YUV image viewer
+Exec=yuv-image-viewer %F
+Icon=yuv-image-viewer
+MimeType=application/x-nv12;application/x-nv21;application/x-i420;application/x-yv12;application/x-p010;application/x-yuv;
+Categories=Graphics;Viewer;
+Terminal=false
+StartupWMClass=yuv-image-viewer

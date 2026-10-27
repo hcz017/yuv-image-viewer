@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-nv12">
+    <comment>NV12 YUV image</comment>
+    <glob pattern="*.nv12"/>
+  </mime-type>
+  <mime-type type="application/x-nv21">
+    <comment>NV21 YUV image</comment>
+    <glob pattern="*.nv21"/>
+  </mime-type>
+  <mime-type type="application/x-i420">
+    <comment>I420 YUV image</comment>
+    <glob pattern="*.i420"/>
+  </mime-type>
+  <mime-type type="application/x-yv12">
+    <comment>YV12 YUV image</comment>
+    <glob pattern="*.yv12"/>
+  </mime-type>
+  <mime-type type="application/x-p010">
+    <comment>P010 YUV image</comment>
+    <glob pattern="*.p010"/>
+  </mime-type>
+  <mime-type type="application/x-yuv">
+    <comment>YUV image</comment>
+    <glob pattern="*.yuv"/>
+  </mime-type>
+</mime-info>

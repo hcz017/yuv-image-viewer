@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YUV Image Viewer</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div id="shell">
+      <header id="menubar" class="menubar"></header>
+      <div id="banner" class="banner hidden"></div>
+      <div class="layout">
+        <aside id="sidebar" class="sidebar">
+          <div class="sidebar-title">目录</div>
+          <div id="tree" class="tree"></div>
+        </aside>
+        <div id="splitter" class="splitter" title="拖动调整侧栏宽度"></div>
+        <main class="main">
+          <div class="toolbar">
+            <button id="back" class="icon-button" title="返回列表 (Esc)">←</button>
+            <input id="address" class="address" spellcheck="false" placeholder="输入绝对路径后回车" />
+            <button id="go" class="icon-button" title="前往">前往</button>
+            <div class="toolbar-spacer"></div>
+            <button id="pick-files" class="primary">打开文件</button>
+            <button id="pick-folder">打开文件夹</button>
+          </div>
+          <div id="stage" class="stage hidden"></div>
+          <div id="list" class="list-host"></div>
+          <div class="statusbar">
+            <span id="readout" class="readout"></span>
+            <span id="error" class="error"></span>
+            <span id="notice" class="notice hidden"></span>
+            <span id="scale" class="scale"></span>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script src="boot.js"></script>
+  </body>
+</html>
