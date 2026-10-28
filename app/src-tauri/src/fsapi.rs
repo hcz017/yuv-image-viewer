@@ -1,4 +1,4 @@
-use crate::error::FsError;
+use crate::error::{FsError, FsErrorKind};
 use crate::paths::{is_supported_path, require_absolute, SUPPORTED_EXTENSIONS};
 use crate::platform::volumes::{self, VolumeInfo};
 use serde::Serialize;
@@ -70,6 +70,50 @@ pub fn stat_path(path: String) -> Result<EntryInfo, FsError> {
         return Err(FsError::not_supported(&target));
     }
     Ok(info)
+}
+
+#[tauri::command]
+pub fn reveal_path(path: String) -> Result<(), FsError> {
+    let target = require_absolute(&path)?;
+    let meta = fs::metadata(&target).map_err(|err| FsError::from_io(err, &target))?;
+    reveal_in_file_manager(&target, meta.is_dir())
+}
+
+fn reveal_in_file_manager(target: &Path, is_dir: bool) -> Result<(), FsError> {
+    use std::process::Command;
+
+    #[cfg(target_os = "macos")]
+    let spawned = {
+        let mut command = Command::new("open");
+        if !is_dir {
+            command.arg("-R");
+        }
+        command.arg(target).spawn()
+    };
+
+    #[cfg(target_os = "windows")]
+    let spawned = {
+        if is_dir {
+            Command::new("explorer").arg(target).spawn()
+        } else {
+            Command::new("explorer")
+                .arg(format!("/select,{}", target.to_string_lossy()))
+                .spawn()
+        }
+    };
+
+    #[cfg(target_os = "linux")]
+    let spawned = {
+        let folder = if is_dir {
+            target
+        } else {
+            target.parent().unwrap_or(target)
+        };
+        Command::new("xdg-open").arg(folder).spawn()
+    };
+
+    spawned.map_err(|err| FsError::new(FsErrorKind::Io, format!("无法打开文件管理器：{err}")))?;
+    Ok(())
 }
 
 #[tauri::command]

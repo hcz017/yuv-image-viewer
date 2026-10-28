@@ -22,6 +22,7 @@ export interface HostApi {
   listVolumes(): Promise<VolumeWire[]>;
   listDirEntries(path: string): Promise<EntryInfoWire[]>;
   statPath(path: string): Promise<EntryInfoWire>;
+  revealPath(path: string): Promise<void>;
   readFileBytes(path: string): Promise<Uint8Array>;
   pickFiles(): Promise<string[]>;
   pickDirectory(): Promise<string | null>;
@@ -42,6 +43,7 @@ export function createHost(): HostApi {
     listVolumes: () => invoke("list_volumes"),
     listDirEntries: (path) => invoke("list_dir_entries", { path }),
     statPath: (path) => invoke("stat_path", { path }),
+    revealPath: (path) => invoke("reveal_path", { path }),
     readFileBytes: async (path) => {
       const result = await invoke<Uint8Array | ArrayBuffer>("read_file_bytes", { path });
       return result instanceof Uint8Array ? result : new Uint8Array(result);

@@ -1,5 +1,6 @@
 import { fromWireEntry } from "../../common/types";
 import type { PathPolicy } from "../../common/pathPolicy";
+import { showContextMenu } from "./contextMenu";
 import type { HostApi, VolumeWire } from "./host";
 import { dirNode, rootNode, type TreeNode } from "./treeModel";
 
@@ -13,6 +14,8 @@ export interface TreeDeps {
   host: HostApi;
   policy: PathPolicy;
   onNavigate: (path: string) => void;
+  onReveal: (path: string) => void;
+  revealLabel: string;
 }
 
 export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
@@ -71,6 +74,15 @@ export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
         return;
       }
       await ensureChildren(node);
+    };
+    row.oncontextmenu = (event) => {
+      event.preventDefault();
+      if (!node.path) {
+        return;
+      }
+      showContextMenu(event.clientX, event.clientY, [
+        { label: deps.revealLabel, onClick: () => deps.onReveal(node.path) },
+      ]);
     };
 
     wrapper.append(row);

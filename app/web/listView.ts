@@ -3,6 +3,7 @@ import { formatBytes, formatLabel, formatTime, specText } from "../../common/lis
 import type { PathPolicy } from "../../common/pathPolicy";
 import { applySelection, type SelectMode } from "../../common/selectionModel";
 import type { FileRow, SortKey } from "../../common/types";
+import { showContextMenu, type ContextMenuEntry } from "./contextMenu";
 
 export interface ListViewApi {
   render(state: AppState, rows: readonly FileRow[]): void;
@@ -14,6 +15,8 @@ export interface ListDeps {
   onCompare: (paths: readonly string[]) => void;
   onSelect: (order: readonly string[], anchor: string | null) => void;
   onSort: (key: SortKey) => void;
+  onReveal: (path: string) => void;
+  revealLabel: string;
 }
 
 const SORTABLE_COLUMNS: Array<{ key: SortKey; label: string }> = [
@@ -109,9 +112,18 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
         tr.ondblclick = () => deps.onOpen(row.path);
         tr.oncontextmenu = (event) => {
           event.preventDefault();
-          if (state.selectionOrder.length === 2) {
-            showCompareMenu(event.clientX, event.clientY, state.selectionOrder);
+          const rowKey = deps.policy.key(row.path);
+          const wasSelected = selection.has(rowKey);
+          if (!wasSelected) {
+            select(row.path, "single");
           }
+          const order = wasSelected ? state.selectionOrder : [row.path];
+          const entries: ContextMenuEntry[] = [];
+          if (wasSelected && order.length === 2) {
+            entries.push({ label: "YUV 对比", onClick: () => deps.onCompare(order) });
+          }
+          entries.push({ label: deps.revealLabel, onClick: () => deps.onReveal(row.path) });
+          showContextMenu(event.clientX, event.clientY, entries);
         };
         body.append(tr);
       }
@@ -127,25 +139,4 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
       }
     },
   };
-
-  function showCompareMenu(x: number, y: number, paths: readonly string[]) {
-    document.querySelector(".context-menu")?.remove();
-    const menu = document.createElement("div");
-    menu.className = "context-menu";
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-    const item = document.createElement("button");
-    item.textContent = "YUV 对比";
-    item.onclick = () => {
-      menu.remove();
-      deps.onCompare(paths);
-    };
-    menu.append(item);
-    document.body.append(menu);
-    const dismiss = () => {
-      menu.remove();
-      document.removeEventListener("click", dismiss);
-    };
-    setTimeout(() => document.addEventListener("click", dismiss), 0);
-  }
 }

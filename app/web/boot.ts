@@ -85,6 +85,28 @@ async function main() {
     banner.classList.remove("hidden");
   };
 
+  const revealFileLabel =
+    platform.os === "macos"
+      ? "在访达中显示"
+      : platform.os === "windows"
+        ? "在资源管理器中显示"
+        : "在文件管理器中显示";
+  const revealFolderLabel =
+    platform.os === "macos"
+      ? "在访达中打开"
+      : platform.os === "windows"
+        ? "在资源管理器中打开"
+        : "在文件管理器中打开";
+  const reveal = (path: string) => {
+    void host.revealPath(path).catch((error: unknown) => {
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+      showBanner(`无法打开所在文件夹：${message}`);
+    });
+  };
+
   const single = createSingleView({
     onReadout: (text) => {
       readout.textContent = text ?? "";
@@ -204,6 +226,8 @@ async function main() {
       store.dispatch({ type: "openDir", token: state.generation, dir: state.dir, rows });
       persistSoon();
     },
+    onReveal: reveal,
+    revealLabel: revealFileLabel,
   });
 
   const tree = createTree(treeHost, {
@@ -212,6 +236,8 @@ async function main() {
     onNavigate: (path) => {
       void openFlow.open([path]);
     },
+    onReveal: reveal,
+    revealLabel: revealFolderLabel,
   });
 
   const cache = createPrefetchCache(host);
