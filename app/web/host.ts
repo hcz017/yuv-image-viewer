@@ -91,8 +91,11 @@ export function createHost(): HostApi {
       const window = getCurrentWindow();
       return window.onCloseRequested(async (event) => {
         event.preventDefault();
-        await handler();
-        await window.destroy();
+        try {
+          await handler();
+        } finally {
+          await window.destroy();
+        }
       });
     },
   };
