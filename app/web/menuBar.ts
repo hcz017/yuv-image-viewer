@@ -4,12 +4,10 @@ export interface MenuBarDeps {
   openRecent: (path: string) => void;
   backToList: () => void;
   showAbout: () => void;
-  setColorStandard: (value: "bt601" | "bt709") => void;
 }
 
 export interface MenuBarApi {
   setRecent(dirs: readonly string[]): void;
-  setColorStandard(value: string): void;
 }
 
 export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBarApi {
@@ -118,27 +116,7 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
   menu("文件", fileEntries);
   menu("帮助", () => [item("关于 YUV Image Viewer", deps.showAbout)]);
 
-  const spacer = document.createElement("div");
-  spacer.className = "menubar-spacer";
-
-  const standardLabel = document.createElement("label");
-  standardLabel.className = "standard-picker";
-  const standardText = document.createElement("span");
-  standardText.textContent = "色彩标准";
-  const select = document.createElement("select");
-  for (const [value, label] of [
-    ["bt601", "BT.601"],
-    ["bt709", "BT.709"],
-  ] as const) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    select.append(option);
-  }
-  select.onchange = () => deps.setColorStandard(select.value === "bt709" ? "bt709" : "bt601");
-  standardLabel.append(standardText, select);
-
-  container.append(brand, menus, spacer, standardLabel);
+  container.append(brand, menus);
 
   document.addEventListener("click", (event) => {
     if (!openPanel) {
@@ -165,9 +143,6 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
   return {
     setRecent(dirs) {
       recentDirs = dirs;
-    },
-    setColorStandard(value) {
-      select.value = value === "bt709" ? "bt709" : "bt601";
     },
   };
 }

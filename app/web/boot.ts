@@ -62,6 +62,8 @@ async function main() {
   const splitter = required("splitter");
   const formatControl = required("format-control");
   const formatSelect = required("format") as HTMLSelectElement;
+  const colorControl = required("color-control");
+  const colorSelect = required("color-standard") as HTMLSelectElement;
   const backButton = required("back");
   const goButton = required("go");
 
@@ -142,6 +144,17 @@ async function main() {
     formatSelect.value = format;
   };
 
+  for (const [value, label] of [
+    ["bt601", "BT.601"],
+    ["bt709", "BT.709"],
+  ] as const) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    colorSelect.append(option);
+  }
+  colorSelect.value = colorStandard;
+
   const switchFormat = (next: YuvFormat) => {
     const image = single.currentImage();
     if (!image) {
@@ -178,9 +191,12 @@ async function main() {
     colorStandard = value;
     single.setStandard(value);
     compare.setStandard(value);
-    menu.setColorStandard(value);
+    colorSelect.value = value;
     persistSoon();
   };
+
+  colorSelect.onchange = () =>
+    setStandard(colorSelect.value === "bt709" ? "bt709" : "bt601");
 
   const menu = createMenuBar(menubarHost, {
     openFiles: () => {
@@ -202,11 +218,9 @@ async function main() {
         configLocation: platform.config_location,
       });
     },
-    setColorStandard: setStandard,
   });
   const about = createAboutModal();
   menu.setRecent(recentDirs);
-  menu.setColorStandard(colorStandard);
 
   const list = createListView(listHost, {
     policy,
@@ -608,6 +622,7 @@ async function main() {
     single.element.classList.toggle("hidden", kind !== "single");
     compare.element.classList.toggle("hidden", kind !== "compare");
     formatControl.classList.toggle("hidden", kind !== "single");
+    colorControl.classList.toggle("hidden", inList);
     backButton.classList.toggle("hidden", kind === "list");
     address.classList.toggle("hidden", !inList);
     goButton.classList.toggle("hidden", !inList);

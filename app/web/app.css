@@ -111,24 +111,6 @@ button.primary:hover {
   background: #eef1f3;
 }
 
-.menubar-spacer {
-  flex: 1;
-}
-
-.standard-picker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-}
-
-.standard-picker select {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 3px 6px;
-  background: var(--panel);
-}
-
 .format-control {
   display: flex;
   align-items: center;
