@@ -2,6 +2,9 @@ node_modules/
 out/
 app/dist/
 app/src-tauri/target/
+app/src-tauri/gen/schemas/windows-schema.json
+yuv-image-viewer-standalone-win64/
+yuv-image-viewer-standalone-win64.zip
 test-artifacts/
 .trae-html-share-packages/
 .DS_Store
