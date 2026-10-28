@@ -52,10 +52,6 @@ export function createSingleView(deps: SingleViewDeps): SingleViewApi {
   canvas.className = "gl-canvas";
   element.append(canvas);
 
-  const overlay = document.createElement("div");
-  overlay.className = "view-caption";
-  element.append(overlay);
-
   let renderer: Renderer | null = null;
   let rendererError: string | null = null;
   let image: ImagePayload | null = null;
@@ -262,7 +258,6 @@ export function createSingleView(deps: SingleViewDeps): SingleViewApi {
     canvas,
     show(next) {
       image = next;
-      overlay.textContent = next.name;
       if (!uploadCurrent()) {
         return;
       }
@@ -289,7 +284,6 @@ export function createSingleView(deps: SingleViewDeps): SingleViewApi {
     clear() {
       image = null;
       pendingFit = false;
-      overlay.textContent = "";
       renderer?.disposeTextures();
       redraw();
       deps.onReadout(null);

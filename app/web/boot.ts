@@ -55,6 +55,7 @@ async function main() {
   const stage = required("stage");
   const address = required("address") as HTMLInputElement;
   const readout = required("readout");
+  const fileCaption = required("file-caption");
   const errorLine = required("error");
   const noticeElement = required("notice");
   const scaleLabel = required("scale");
@@ -469,6 +470,19 @@ async function main() {
 
   const activeView = () => (store.get().mode.kind === "compare" ? compare : single);
 
+  const captionOf = (mode: AppState["mode"]): { text: string; title: string } => {
+    if (mode.kind === "single") {
+      return { text: policy.basename(mode.file), title: mode.file };
+    }
+    if (mode.kind === "compare") {
+      return {
+        text: `A  ${policy.basename(mode.a)}    |    B  ${policy.basename(mode.b)}`,
+        title: `A: ${mode.a}\nB: ${mode.b}`,
+      };
+    }
+    return { text: "", title: "" };
+  };
+
   const currentConfig = (geometry: AppConfig["window"]): AppConfig => {
     const state = store.get();
     return {
@@ -642,6 +656,9 @@ async function main() {
       address.value = state.dir;
     }
     errorLine.textContent = state.error ?? "";
+    const caption = captionOf(state.mode);
+    fileCaption.textContent = caption.text;
+    fileCaption.title = caption.title;
 
     if (kind === "list" && lastModeKind !== "list") {
       single.clear();

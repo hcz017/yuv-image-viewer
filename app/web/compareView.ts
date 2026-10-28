@@ -35,12 +35,6 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
   canvas.className = "gl-canvas";
   element.append(canvas);
 
-  const labelA = document.createElement("div");
-  labelA.className = "pane-label pane-label-a";
-  const labelB = document.createElement("div");
-  labelB.className = "pane-label pane-label-b";
-  element.append(labelA, labelB);
-
   let rendererA: Renderer | null = null;
   let rendererB: Renderer | null = null;
   let imageA: ComparePane | null = null;
@@ -398,8 +392,6 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
       if (b) {
         rendererB = uploadPane("b");
       }
-      labelA.textContent = imageA ? `A  ${imageA.name}` : "";
-      labelB.textContent = imageB ? `B  ${imageB.name}` : "";
       pendingFit = true;
       if (canvas.width > 1 && canvas.height > 1) {
         pendingFit = false;
@@ -456,8 +448,6 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
       imageB = nextB;
       viewA = nextViewA;
       viewB = nextViewB;
-      labelA.textContent = imageA ? `A  ${imageA.name}` : "";
-      labelB.textContent = imageB ? `B  ${imageB.name}` : "";
       rendererA?.disposeTextures();
       rendererB?.disposeTextures();
       uploadPane("a");
