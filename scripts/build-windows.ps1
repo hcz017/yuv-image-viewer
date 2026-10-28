@@ -14,7 +14,7 @@ npm run check:version
 
 Push-Location app
 try {
-  npx tauri build
+  npx tauri build --no-bundle
 } finally {
   Pop-Location
 }

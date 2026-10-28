@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(new URL("..", import.meta.url).pathname);
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")).version;
 const cargo = readFileSync(resolve(root, "app/src-tauri/Cargo.toml"), "utf8")
   .match(/^version\s*=\s*"([^"]+)"/m)?.[1];
