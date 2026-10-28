@@ -639,5 +639,69 @@ body.resizing {
 }
 
 .about-modal {
-  width: 420px;
+  width: 550px;
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+
+.about-section {
+  margin-top: 16px;
+}
+
+.about-section h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.about-list,
+.about-keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-list li {
+  position: relative;
+  margin: 4px 0;
+  padding-left: 13px;
+  line-height: 1.55;
+}
+
+.about-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+.about-keys li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+
+.about-keys kbd {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #fbfcfd;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.about-keys span {
+  color: var(--muted);
+  text-align: right;
 }
