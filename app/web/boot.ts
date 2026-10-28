@@ -64,6 +64,12 @@ async function main() {
   const formatSelect = required("format") as HTMLSelectElement;
   const colorControl = required("color-control");
   const colorSelect = required("color-standard") as HTMLSelectElement;
+  const zoomControl = required("zoom-control");
+  const zoomOneButton = required("zoom-one");
+  const zoomFitButton = required("zoom-fit");
+  const compareControl = required("compare-control");
+  const compareSync = required("compare-sync") as HTMLInputElement;
+  const compareSwap = required("compare-swap");
   const backButton = required("back");
   const goButton = required("go");
 
@@ -122,10 +128,6 @@ async function main() {
   const compare = createCompareView({
     onReadout: (text) => {
       readout.textContent = text ?? "";
-    },
-    onSwap: () => {
-      compare.swap();
-      store.dispatch({ type: "swapCompare" });
     },
     onContextError: (message) => showBanner(message),
   });
@@ -552,14 +554,15 @@ async function main() {
       void openFlow.open([value]);
     }
   });
-  required("pick-files").addEventListener("click", () => {
-    void openFiles();
-  });
-  required("pick-folder").addEventListener("click", () => {
-    void openFolder();
-  });
   backButton.addEventListener("click", () => {
     store.dispatch({ type: "backToList" });
+  });
+  zoomOneButton.addEventListener("click", () => activeView().oneToOne());
+  zoomFitButton.addEventListener("click", () => activeView().fit());
+  compareSync.addEventListener("change", () => compare.setSync(compareSync.checked));
+  compareSwap.addEventListener("click", () => {
+    compare.swap();
+    store.dispatch({ type: "swapCompare" });
   });
 
   document.addEventListener("keydown", (event) => {
@@ -624,6 +627,8 @@ async function main() {
     compare.element.classList.toggle("hidden", kind !== "compare");
     formatControl.classList.toggle("hidden", kind !== "single");
     colorControl.classList.toggle("hidden", inList);
+    zoomControl.classList.toggle("hidden", inList);
+    compareControl.classList.toggle("hidden", kind !== "compare");
     backButton.classList.toggle("hidden", kind === "list");
     address.classList.toggle("hidden", !inList);
     goButton.classList.toggle("hidden", !inList);

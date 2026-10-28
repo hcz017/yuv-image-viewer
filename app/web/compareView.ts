@@ -9,7 +9,6 @@ export type ComparePane = ImagePayload;
 
 export interface CompareViewDeps {
   onReadout: (text: string | null) => void;
-  onSwap: () => void;
   onContextError: (message: string) => void;
 }
 
@@ -18,6 +17,7 @@ export interface CompareViewApi {
   readonly canvas: HTMLCanvasElement;
   setImages(a: ComparePane | null, b: ComparePane | null): void;
   setStandard(standard: ColorStandard): void;
+  setSync(enabled: boolean): void;
   fit(): void;
   oneToOne(): void;
   zoom(factor: number): void;
@@ -41,29 +41,6 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
   labelB.className = "pane-label pane-label-b";
   element.append(labelA, labelB);
 
-  const toolbar = document.createElement("div");
-  toolbar.className = "compare-toolbar";
-  const syncLabel = document.createElement("label");
-  const syncInput = document.createElement("input");
-  syncInput.type = "checkbox";
-  syncInput.checked = true;
-  syncLabel.append(syncInput, document.createTextNode("同步视图"));
-
-  const swapButton = document.createElement("button");
-  swapButton.textContent = "交换 A/B";
-  swapButton.onclick = () => deps.onSwap();
-
-  const fitButton = document.createElement("button");
-  fitButton.textContent = "适应";
-  fitButton.onclick = () => fit();
-
-  const oneButton = document.createElement("button");
-  oneButton.textContent = "1:1";
-  oneButton.onclick = () => oneToOne();
-
-  toolbar.append(syncLabel, swapButton, fitButton, oneButton);
-  element.append(toolbar);
-
   let rendererA: Renderer | null = null;
   let rendererB: Renderer | null = null;
   let imageA: ComparePane | null = null;
@@ -73,9 +50,10 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
   let standard: ColorStandard = "bt601";
   let dragging: { pane: "a" | "b"; x: number; y: number } | null = null;
   let pendingFit = false;
+  let syncView = true;
 
   const dpr = () => window.devicePixelRatio || 1;
-  const syncEnabled = () => syncInput.checked;
+  const syncEnabled = () => syncView;
 
   function createRenderer(existing: Renderer | null): Renderer | null {
     if (existing) {
@@ -435,6 +413,9 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
       rendererA?.setStandard(next);
       rendererB?.setStandard(next);
       redraw();
+    },
+    setSync(enabled) {
+      syncView = enabled;
     },
     fit,
     oneToOne,

@@ -29,9 +29,18 @@
               <span>色彩标准</span>
               <select id="color-standard"></select>
             </label>
+            <div id="zoom-control" class="zoom-control hidden">
+              <button id="zoom-one" title="按实际大小显示 (1)">1:1</button>
+              <button id="zoom-fit" title="按适合窗口显示 (F)">适合窗口</button>
+            </div>
+            <div id="compare-control" class="compare-control hidden">
+              <label>
+                <input id="compare-sync" type="checkbox" checked />
+                同步视图
+              </label>
+              <button id="compare-swap">交换 A/B</button>
+            </div>
             <div class="toolbar-spacer"></div>
-            <button id="pick-files" class="primary">打开文件</button>
-            <button id="pick-folder">打开文件夹</button>
           </div>
           <div id="stage" class="stage hidden"></div>
           <div id="list" class="list-host"></div>
