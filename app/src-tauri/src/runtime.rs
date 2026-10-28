@@ -23,7 +23,12 @@ pub fn ensure_webview2() -> bool {
         use windows_sys::Win32::UI::WindowsAndMessaging::{
             MessageBoxW, MB_ICONERROR, MB_OK,
         };
-        MessageBoxW(0, message.as_ptr(), caption.as_ptr(), MB_OK | MB_ICONERROR);
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            caption.as_ptr(),
+            MB_OK | MB_ICONERROR,
+        );
     }
     false
 }
