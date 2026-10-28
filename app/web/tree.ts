@@ -16,10 +16,29 @@ export interface TreeDeps {
   onNavigate: (path: string) => void;
   onReveal: (path: string) => void;
   revealLabel: string;
+  isListMode: () => boolean;
 }
 
 export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
   const root = rootNode(deps.policy.rootLabel);
+  let activeKey: string | null = null;
+
+  const toggleExpanded = async (node: TreeNode): Promise<void> => {
+    if (node.loading) {
+      return;
+    }
+    if (node.expanded) {
+      node.expanded = false;
+      render();
+      return;
+    }
+    if (node.children !== null) {
+      node.expanded = true;
+      render();
+      return;
+    }
+    await ensureChildren(node);
+  };
 
   const ensureChildren = async (node: TreeNode): Promise<void> => {
     if (node.children !== null || node.loading) {
@@ -57,23 +76,39 @@ export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
     const caret = document.createElement("span");
     caret.className = "caret";
     caret.textContent = node.loading ? "…" : node.expanded ? "▾" : "▸";
+    caret.title = node.expanded ? "折叠" : "展开";
+    caret.onclick = (event) => {
+      event.stopPropagation();
+      void toggleExpanded(node);
+    };
 
     const label = document.createElement("span");
     label.className = "tree-label";
     label.textContent = node.label;
     label.title = node.path;
 
+    if (node.path && activeKey !== null && deps.policy.key(node.path) === activeKey) {
+      row.classList.add("active");
+    }
+
+    row.dataset.path = node.path;
     row.append(caret, label);
     row.onclick = async () => {
-      if (node.path) {
-        deps.onNavigate(node.path);
-      }
-      if (node.expanded && node.children !== null) {
-        node.expanded = false;
-        render();
+      if (!node.path) {
         return;
       }
-      await ensureChildren(node);
+      if (
+        deps.isListMode() &&
+        activeKey !== null &&
+        deps.policy.key(node.path) === activeKey
+      ) {
+        await toggleExpanded(node);
+        return;
+      }
+      deps.onNavigate(node.path);
+      if (!node.expanded) {
+        await toggleExpanded(node);
+      }
     };
     row.oncontextmenu = (event) => {
       event.preventDefault();
@@ -123,6 +158,7 @@ export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
     if (!volume) {
       return;
     }
+    activeKey = deps.policy.key(path);
     await ensureChildren(volume);
 
     const targetKey = deps.policy.key(path);
@@ -146,6 +182,9 @@ export function createTree(container: HTMLElement, deps: TreeDeps): TreeApi {
       }
     }
     render();
+    container
+      .querySelector<HTMLElement>(".tree-row.active")
+      ?.scrollIntoView({ block: "nearest" });
   };
 
   render();

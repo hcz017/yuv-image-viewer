@@ -252,6 +252,7 @@ async function main() {
     },
     onReveal: reveal,
     revealLabel: revealFolderLabel,
+    isListMode: () => store.get().mode.kind === "list",
   });
 
   const cache = createPrefetchCache(host);
