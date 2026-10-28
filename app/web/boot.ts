@@ -483,10 +483,16 @@ async function main() {
     };
   };
 
+  let lastGeometry = config.window;
+
   const persist = async () => {
-    let geometry = config.window;
+    let geometry = lastGeometry;
     try {
-      geometry = await host.windowGeometry();
+      const current = await host.windowGeometry();
+      if (current) {
+        lastGeometry = current;
+        geometry = current;
+      }
     } catch {
       // 忽略窗口几何读取失败
     }
@@ -705,6 +711,10 @@ async function main() {
   const unlistenClose = await host.onCloseRequested(() => persist());
 
   await host.signalReady();
+  const startupGeometry = await host.windowGeometry();
+  if (startupGeometry) {
+    lastGeometry = startupGeometry;
+  }
   const openedAtStartup = await drainPending();
 
   if (!openedAtStartup && config.lastDir) {

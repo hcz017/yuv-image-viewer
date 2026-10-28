@@ -30,7 +30,7 @@ export interface HostApi {
   saveConfig(config: AppConfigWire): Promise<void>;
   takePendingPaths(): Promise<string[][]>;
   signalReady(): Promise<boolean>;
-  windowGeometry(): Promise<WindowGeometry>;
+  windowGeometry(): Promise<WindowGeometry | null>;
   onOpenPaths(handler: () => void): Promise<UnlistenFn>;
   onDragDrop(handler: (paths: string[]) => void): Promise<UnlistenFn>;
   onWindowGeometry(handler: () => void): Promise<UnlistenFn>;
@@ -56,6 +56,9 @@ export function createHost(): HostApi {
     signalReady: () => invoke("signal_ready"),
     windowGeometry: async () => {
       const window = getCurrentWindow();
+      if (await window.isMinimized()) {
+        return null;
+      }
       const [position, size, scale] = await Promise.all([
         window.outerPosition(),
         window.outerSize(),

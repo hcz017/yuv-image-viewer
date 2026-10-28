@@ -7,7 +7,7 @@ mod pending_paths;
 mod platform;
 mod runtime;
 
-use config::AppConfig;
+use config::{AppConfig, WindowConfig};
 use error::{FsError, FsErrorKind};
 use pending_paths::PendingPaths;
 use std::fs;
@@ -76,6 +76,9 @@ fn restore_window(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
+    if !saved_geometry_visible(&window, &cfg.window) {
+        return;
+    }
     let _ = window.set_size(tauri::LogicalSize::new(
         cfg.window.width as f64,
         cfg.window.height as f64,
@@ -84,6 +87,42 @@ fn restore_window(app: &tauri::AppHandle) {
         cfg.window.x as f64,
         cfg.window.y as f64,
     ));
+}
+
+fn saved_geometry_visible(window: &tauri::WebviewWindow, cfg: &WindowConfig) -> bool {
+    if cfg.width < 200 || cfg.height < 200 {
+        return false;
+    }
+    let Ok(monitors) = window.available_monitors() else {
+        return false;
+    };
+    let rect = (
+        cfg.x as f64,
+        cfg.y as f64,
+        cfg.width as f64,
+        cfg.height as f64,
+    );
+    monitors.iter().any(|monitor| {
+        let scale = monitor.scale_factor();
+        let position = monitor.position();
+        let size = monitor.size();
+        let area = (
+            position.x as f64 / scale,
+            position.y as f64 / scale,
+            size.width as f64 / scale,
+            size.height as f64 / scale,
+        );
+        has_visible_overlap(rect, area)
+    })
+}
+
+fn has_visible_overlap(a: (f64, f64, f64, f64), b: (f64, f64, f64, f64)) -> bool {
+    const MIN_VISIBLE: f64 = 50.0;
+    let left = a.0.max(b.0);
+    let top = a.1.max(b.1);
+    let right = (a.0 + a.2).min(b.0 + b.2);
+    let bottom = (a.1 + a.3).min(b.1 + b.3);
+    right - left >= MIN_VISIBLE && bottom - top >= MIN_VISIBLE
 }
 
 pub fn run() {
@@ -157,4 +196,24 @@ pub fn run() {
             let _ = (app_handle, event);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_visible_overlap;
+
+    #[test]
+    fn rejects_minimized_window_geometry() {
+        let minimized = (-21333.0, -21333.0, 263.0, 291.0);
+        assert!(!has_visible_overlap(minimized, (0.0, 0.0, 1280.0, 720.0)));
+    }
+
+    #[test]
+    fn accepts_geometry_on_secondary_monitor() {
+        let secondary = (-1920.0, 0.0, 1920.0, 1080.0);
+        assert!(has_visible_overlap(
+            (-1800.0, 100.0, 1200.0, 800.0),
+            secondary
+        ));
+    }
 }
