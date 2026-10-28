@@ -62,6 +62,8 @@ async function main() {
   const splitter = required("splitter");
   const formatControl = required("format-control");
   const formatSelect = required("format") as HTMLSelectElement;
+  const backButton = required("back");
+  const goButton = required("go");
 
   const gate = { paused: false };
   let colorStandard: "bt601" | "bt709" = config.colorStandard === "bt709" ? "bt709" : "bt601";
@@ -503,7 +505,7 @@ async function main() {
     }
   });
 
-  required("go").addEventListener("click", () => {
+  goButton.addEventListener("click", () => {
     const value = address.value.trim();
     if (value) {
       void openFlow.open([value]);
@@ -515,7 +517,7 @@ async function main() {
   required("pick-folder").addEventListener("click", () => {
     void openFolder();
   });
-  required("back").addEventListener("click", () => {
+  backButton.addEventListener("click", () => {
     store.dispatch({ type: "backToList" });
   });
 
@@ -580,6 +582,9 @@ async function main() {
     single.element.classList.toggle("hidden", kind !== "single");
     compare.element.classList.toggle("hidden", kind !== "compare");
     formatControl.classList.toggle("hidden", kind !== "single");
+    backButton.classList.toggle("hidden", kind === "list");
+    address.classList.toggle("hidden", !inList);
+    goButton.classList.toggle("hidden", !inList);
     if (document.activeElement !== address) {
       address.value = state.dir;
     }
