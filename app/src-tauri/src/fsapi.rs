@@ -74,6 +74,39 @@ pub fn stat_path(path: String) -> Result<EntryInfo, FsError> {
 }
 
 #[tauri::command]
+pub fn rename_path(path: String, new_name: String) -> Result<String, FsError> {
+    let source = require_absolute(&path)?;
+    let name = new_name.trim();
+    if name.is_empty() {
+        return Err(FsError::new(FsErrorKind::Io, "文件名不能为空"));
+    }
+    if name == "."
+        || name == ".."
+        || name.contains('/')
+        || name.contains('\\')
+        || name.contains('\0')
+    {
+        return Err(FsError::new(FsErrorKind::Io, "文件名不合法"));
+    }
+    let parent = source
+        .parent()
+        .ok_or_else(|| FsError::not_supported(&source))?;
+    let target = parent.join(name);
+    if target == source {
+        return Ok(source.to_string_lossy().to_string());
+    }
+    if fs::symlink_metadata(&target).is_ok() {
+        return Err(FsError::new(
+            FsErrorKind::Io,
+            format!("同名文件已存在：{}", target.display()),
+        ));
+    }
+    fs::metadata(&source).map_err(|err| FsError::from_io(err, &source))?;
+    fs::rename(&source, &target).map_err(|err| FsError::from_io(err, &source))?;
+    Ok(target.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub fn reveal_path(path: String) -> Result<(), FsError> {
     let target = require_absolute(&path)?;
     let meta = fs::metadata(&target).map_err(|err| FsError::from_io(err, &target))?;

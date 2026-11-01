@@ -164,6 +164,7 @@ pub fn run() {
             fsapi::list_dir_entries,
             fsapi::stat_path,
             fsapi::reveal_path,
+            fsapi::rename_path,
             fsapi::read_file_bytes,
             fsapi::pick_files,
             fsapi::pick_directory,

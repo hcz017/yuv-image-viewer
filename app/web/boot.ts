@@ -1,13 +1,13 @@
 import { initialState, type AppState } from "../../common/appState";
 import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { decodeConfig, encodeConfig, type AppConfig } from "../../common/config";
-import { neighborPath, sortRows } from "../../common/fileEntry";
+import { neighborPath, rowsFromEntries, sortRows } from "../../common/fileEntry";
 import { parseSizeCandidates } from "../../common/filenameParser";
 import { formatBytes } from "../../common/listMeta";
 import { createPathPolicy, type PathPolicy } from "../../common/pathPolicy";
 import { pushRecentDir } from "../../common/recentDirs";
 import { makeSpec, validateSpec } from "../../common/spec";
-import type { FileRow, SortKey, YuvFormat } from "../../common/types";
+import { fromWireEntry, type FileRow, type SortKey, type YuvFormat } from "../../common/types";
 import { createAboutModal } from "./aboutModal";
 import { createCompareView } from "./compareView";
 import { createDelayedNotice } from "./delayedNotice";
@@ -20,9 +20,10 @@ import { loadFile, type LoadDeps, type LoadOutcome, type LoadedFile } from "./lo
 import { createMenuBar } from "./menuBar";
 import { createOpenPathFlow } from "./openPathFlow";
 import { createPrefetchCache } from "./prefetchCache";
+import { createRenameModal } from "./renameModal";
 import { createSingleView, type ImagePayload } from "./singleView";
 import { createSpecModal } from "./specModal";
-import { Store } from "./store";
+import { nextToken, Store } from "./store";
 import { createTree } from "./tree";
 
 const APP_VERSION = "0.4.0";
@@ -85,7 +86,19 @@ async function main() {
   const notice = createDelayedNotice(noticeElement, 500);
   const specModal = createSpecModal(document.body);
   const exportModal = createExportModal(document.body);
+  const renameModal = createRenameModal(document.body);
   const maxTextureSize = gl.webgl2 && gl.maxTextureSize > 0 ? gl.maxTextureSize : 16384;
+
+  const withModal = async <T>(run: () => Promise<T>): Promise<T> => {
+    gate.paused = true;
+    store.dispatch({ type: "setModal", open: true });
+    try {
+      return await run();
+    } finally {
+      store.dispatch({ type: "setModal", open: false });
+      gate.paused = false;
+    }
+  };
 
   const showBanner = (message: string) => {
     banner.classList.remove("success");
@@ -131,13 +144,10 @@ async function main() {
       : platform.os === "windows"
         ? "在资源管理器中打开"
         : "在文件管理器中打开";
+
   const reveal = (path: string) => {
     void host.revealPath(path).catch((error: unknown) => {
-      const message =
-        error && typeof error === "object" && "message" in error
-          ? String((error as { message: unknown }).message)
-          : String(error);
-      showBanner(`无法打开所在文件夹：${message}`);
+      showBanner(`无法打开所在文件夹：${errorMessage(error)}`);
     });
   };
 
@@ -257,6 +267,54 @@ async function main() {
   const about = createAboutModal();
   menu.setRecent(recentDirs);
 
+  const basename = (path: string) => {
+    const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+    return path.slice(slash + 1);
+  };
+
+  const refreshAfterRename = async (fromPath: string, toPath: string) => {
+    const state = store.get();
+    if (state.mode.kind !== "list") {
+      return;
+    }
+    const token = nextToken();
+    store.dispatch({ type: "requestStarted", token });
+    const entries = await host.listDirEntries(state.dir);
+    const rows = sortRows(rowsFromEntries(entries.map(fromWireEntry)), state.sortKey, state.sortDesc);
+    if (store.get().generation !== token) {
+      return;
+    }
+    store.dispatch({ type: "openDir", token, dir: state.dir, rows });
+    const remap = (path: string) => (policy.key(path) === policy.key(fromPath) ? toPath : path);
+    const order = state.selectionOrder.map(remap);
+    const kept = order.filter((path) => rows.some((row) => policy.key(row.path) === policy.key(path)));
+    store.dispatch({
+      type: "select",
+      order: kept,
+      anchor: state.selectionAnchor ? remap(state.selectionAnchor) : null,
+    });
+  };
+
+  const renameFile = async (path: string) => {
+    const currentName = basename(path);
+    const nextName = await withModal(() => renameModal.prompt(currentName));
+    if (!nextName || nextName === currentName) {
+      return;
+    }
+    let newPath: string;
+    try {
+      newPath = await host.renamePath(path, nextName);
+    } catch (error) {
+      showBanner(`重命名失败：${errorMessage(error)}`);
+      return;
+    }
+    try {
+      await refreshAfterRename(path, newPath);
+    } catch (error) {
+      showBanner(`已重命名，但刷新列表失败：${errorMessage(error)}`);
+    }
+  };
+
   const list = createListView(listHost, {
     policy,
     onOpen: (path) => {
@@ -279,6 +337,9 @@ async function main() {
       persistSoon();
     },
     onReveal: reveal,
+    onRename: (path) => {
+      void renameFile(path);
+    },
     revealLabel: revealFileLabel,
   });
 
@@ -297,17 +358,6 @@ async function main() {
   const cachedHost: HostApi = {
     ...host,
     readFileBytes: (path) => cache.read(path),
-  };
-
-  const withModal = async <T>(run: () => Promise<T>): Promise<T> => {
-    gate.paused = true;
-    store.dispatch({ type: "setModal", open: true });
-    try {
-      return await run();
-    } finally {
-      store.dispatch({ type: "setModal", open: false });
-      gate.paused = false;
-    }
   };
 
   const exportPane = (id: "a" | "b", image: ImagePayload): ExportPaneOption => ({

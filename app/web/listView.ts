@@ -17,6 +17,7 @@ export interface ListDeps {
   onSelect: (order: readonly string[], anchor: string | null) => void;
   onSort: (key: SortKey) => void;
   onReveal: (path: string) => void;
+  onRename: (path: string) => void;
   revealLabel: string;
 }
 
@@ -128,6 +129,7 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
             onClick: () => deps.onExport(row.path),
             disabled: wasSelected && order.length > 1,
           });
+          entries.push({ label: "重命名", onClick: () => deps.onRename(row.path) });
           entries.push({ label: deps.revealLabel, onClick: () => deps.onReveal(row.path) });
           showContextMenu(event.clientX, event.clientY, entries);
         };

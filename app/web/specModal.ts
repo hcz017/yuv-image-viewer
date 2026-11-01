@@ -1,5 +1,6 @@
 import { makeSpec, validateSpec } from "../../common/spec";
 import type { Spec, YuvFormat } from "../../common/types";
+import { openDialog } from "./modal";
 
 const FORMATS: YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010"];
 
@@ -34,55 +35,6 @@ function field(label: string, value: number, step = 2): { row: HTMLElement; inpu
 }
 
 export function createSpecModal(container: HTMLElement): SpecModal {
-  const openDialog = (title: string, body: HTMLElement, onSubmit: () => boolean) =>
-    new Promise<boolean>((resolve) => {
-      const backdrop = document.createElement("div");
-      backdrop.className = "modal-backdrop";
-      const modal = document.createElement("div");
-      modal.className = "modal";
-      const heading = document.createElement("h2");
-      heading.textContent = title;
-      const error = document.createElement("p");
-      error.className = "modal-error";
-
-      const actions = document.createElement("div");
-      actions.className = "modal-actions";
-      const cancel = document.createElement("button");
-      cancel.textContent = "取消";
-      const ok = document.createElement("button");
-      ok.className = "primary";
-      ok.textContent = "确定";
-      actions.append(cancel, ok);
-
-      modal.append(heading, body, error, actions);
-      backdrop.append(modal);
-      container.append(backdrop);
-
-      const close = (value: boolean) => {
-        document.removeEventListener("keydown", onKeydown);
-        backdrop.remove();
-        resolve(value);
-      };
-      const onKeydown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          close(false);
-        }
-      };
-      document.addEventListener("keydown", onKeydown);
-      cancel.onclick = () => close(false);
-      ok.onclick = () => {
-        if (onSubmit()) {
-          close(true);
-        }
-      };
-      backdrop.onclick = (event) => {
-        if (event.target === backdrop) {
-          close(false);
-        }
-      };
-    });
-
   return {
     async openManual(options) {
       const body = document.createElement("div");
@@ -107,24 +59,25 @@ export function createSpecModal(container: HTMLElement): SpecModal {
       body.append(formatRow, width.row, height.row, stride.row, scanline.row);
 
       let result: Spec | null = null;
-      const valid = await openDialog("手动设置规格", body, () => {
-        const spec = makeSpec(
-          Number(width.input.value),
-          Number(height.input.value),
-          Number(stride.input.value),
-          Number(scanline.input.value),
-          formatSelect.value as YuvFormat
-        );
-        const check = validateSpec(spec, options.fileSize, options.maxTextureSize);
-        if (check.kind === "invalid") {
-          const error = body.parentElement?.querySelector(".modal-error");
-          if (error) {
+      const valid = await openDialog(container, {
+        title: "手动设置规格",
+        body,
+        onSubmit: (error) => {
+          const spec = makeSpec(
+            Number(width.input.value),
+            Number(height.input.value),
+            Number(stride.input.value),
+            Number(scanline.input.value),
+            formatSelect.value as YuvFormat
+          );
+          const check = validateSpec(spec, options.fileSize, options.maxTextureSize);
+          if (check.kind === "invalid") {
             error.textContent = check.reason ?? "规格不合法";
+            return false;
           }
-          return false;
-        }
-        result = spec;
-        return true;
+          result = spec;
+          return true;
+        },
       });
       return valid ? result : null;
     },
@@ -148,7 +101,11 @@ export function createSpecModal(container: HTMLElement): SpecModal {
       }
       body.append(hint, list);
 
-      return openDialog("选择像素格式", body, () => chosen !== null).then(() => chosen);
+      return openDialog(container, {
+        title: "选择像素格式",
+        body,
+        onSubmit: () => chosen !== null,
+      }).then(() => chosen);
     },
 
     chooseAlignment(name) {
@@ -173,7 +130,11 @@ export function createSpecModal(container: HTMLElement): SpecModal {
       }
       body.append(hint, list);
 
-      return openDialog("选择 P010 对齐方式", body, () => chosen !== null).then(() => chosen);
+      return openDialog(container, {
+        title: "选择 P010 对齐方式",
+        body,
+        onSubmit: () => chosen !== null,
+      }).then(() => chosen);
     },
   };
 }
