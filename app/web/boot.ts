@@ -11,10 +11,12 @@ import type { FileRow, SortKey, YuvFormat } from "../../common/types";
 import { createAboutModal } from "./aboutModal";
 import { createCompareView } from "./compareView";
 import { createDelayedNotice } from "./delayedNotice";
+import { encodeJpegBase64, jpegFileName } from "./exportImage";
+import { createExportModal, type ExportPaneOption } from "./exportModal";
 import { probeGl } from "./glProbe";
 import { createHost, type HostApi } from "./host";
 import { createListView } from "./listView";
-import { loadFile, type LoadDeps, type LoadedFile } from "./loadFlow";
+import { loadFile, type LoadDeps, type LoadOutcome, type LoadedFile } from "./loadFlow";
 import { createMenuBar } from "./menuBar";
 import { createOpenPathFlow } from "./openPathFlow";
 import { createPrefetchCache } from "./prefetchCache";
@@ -82,9 +84,11 @@ async function main() {
 
   const notice = createDelayedNotice(noticeElement, 500);
   const specModal = createSpecModal(document.body);
+  const exportModal = createExportModal(document.body);
   const maxTextureSize = gl.webgl2 && gl.maxTextureSize > 0 ? gl.maxTextureSize : 16384;
 
   const showBanner = (message: string) => {
+    banner.classList.remove("success");
     if (!message) {
       banner.textContent = "";
       banner.classList.add("hidden");
@@ -93,6 +97,27 @@ async function main() {
     banner.textContent = message;
     banner.classList.remove("hidden");
   };
+
+  let successTimer: number | null = null;
+  const showSuccess = (message: string) => {
+    if (successTimer !== null) {
+      window.clearTimeout(successTimer);
+    }
+    banner.textContent = message;
+    banner.classList.remove("hidden");
+    banner.classList.add("success");
+    successTimer = window.setTimeout(() => {
+      successTimer = null;
+      if (banner.textContent === message) {
+        showBanner("");
+      }
+    }, 4000);
+  };
+
+  const errorMessage = (error: unknown): string =>
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message: unknown }).message)
+      : String(error);
 
   const revealFileLabel =
     platform.os === "macos"
@@ -211,6 +236,13 @@ async function main() {
     openRecent: (dir) => {
       void openFlow.open([dir]);
     },
+    exportJpeg: () => {
+      void exportJpeg();
+    },
+    canExport: () => {
+      const state = store.get();
+      return state.mode.kind !== "list" || state.selectionOrder.length === 1;
+    },
     backToList: () => {
       store.dispatch({ type: "backToList" });
     },
@@ -235,6 +267,9 @@ async function main() {
     },
     onSelect: (order, anchor) => {
       store.dispatch({ type: "select", order, anchor });
+    },
+    onExport: (path) => {
+      void exportJpeg(path);
     },
     onSort: (key) => {
       store.dispatch({ type: "setSort", key });
@@ -274,6 +309,98 @@ async function main() {
       gate.paused = false;
     }
   };
+
+  const exportPane = (id: "a" | "b", image: ImagePayload): ExportPaneOption => ({
+    id,
+    name: image.name,
+    width: image.spec.width,
+    height: image.spec.height,
+  });
+
+  async function exportJpeg(targetPath?: string) {
+    const state = store.get();
+    let imageA: ImagePayload | null = null;
+    let imageB: ImagePayload | null = null;
+
+    if (state.mode.kind === "list") {
+      if (state.selectionOrder.length > 1) {
+        showBanner("导出 JPG 一次只能处理一个文件，请只选择一个文件");
+        return;
+      }
+      const path = targetPath ?? state.selectionOrder[0] ?? null;
+      if (!path) {
+        showBanner("请先在文件列表中选择要导出的文件");
+        return;
+      }
+      notice.show("正在读取图像…");
+      let outcome: LoadOutcome;
+      try {
+        outcome = await loadFile(loadDeps, path, null);
+      } finally {
+        notice.hide();
+      }
+      if (store.get().generation !== state.generation) {
+        return;
+      }
+      if (outcome.kind === "cancelled") {
+        return;
+      }
+      if (outcome.kind === "error") {
+        showBanner(outcome.message);
+        return;
+      }
+      imageA = payloadOf(path, outcome.file);
+    } else if (state.mode.kind === "single") {
+      imageA = single.currentImage();
+    } else {
+      const current = compare.current();
+      imageA = current.a;
+      imageB = current.b;
+    }
+
+    const panes: ExportPaneOption[] = [];
+    if (imageA) {
+      panes.push(exportPane("a", imageA));
+    }
+    if (imageB) {
+      panes.push(exportPane("b", imageB));
+    }
+    if (panes.length === 0) {
+      showBanner("请先打开图像再导出 JPG");
+      return;
+    }
+
+    const choice = await withModal(() => exportModal.choose(panes));
+    if (!choice) {
+      return;
+    }
+    const image = choice.pane === "b" ? imageB : imageA;
+    if (!image) {
+      return;
+    }
+
+    let target: string | null;
+    try {
+      target = await host.pickExportPath(jpegFileName(image.name));
+    } catch (error) {
+      showBanner(`无法选择保存位置：${errorMessage(error)}`);
+      return;
+    }
+    if (!target) {
+      return;
+    }
+
+    notice.show("正在导出 JPG…");
+    try {
+      const data = encodeJpegBase64(image, colorStandard, choice.quality);
+      await host.writeJpeg(target, data);
+      showSuccess(`已导出 JPG：${policy.basename(target)}`);
+    } catch (error) {
+      showBanner(`导出 JPG 失败：${errorMessage(error)}`);
+    } finally {
+      notice.hide();
+    }
+  }
 
   const loadDeps: LoadDeps = {
     host: cachedHost,
@@ -603,6 +730,12 @@ async function main() {
       } else {
         void openFiles();
       }
+      return;
+    }
+
+    if (modifier && event.shiftKey && event.key.toLowerCase() === "e") {
+      event.preventDefault();
+      void exportJpeg();
       return;
     }
 

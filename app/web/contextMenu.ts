@@ -1,6 +1,7 @@
 export interface ContextMenuEntry {
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 export function showContextMenu(x: number, y: number, entries: readonly ContextMenuEntry[]): void {
@@ -26,6 +27,7 @@ export function showContextMenu(x: number, y: number, entries: readonly ContextM
   for (const entry of entries) {
     const button = document.createElement("button");
     button.textContent = entry.label;
+    button.disabled = entry.disabled ?? false;
     button.onclick = () => {
       dismiss();
       entry.onClick();

@@ -9,6 +9,7 @@ const FEATURES = [
   "按文件名（如 1920x1080_align）或文件大小自动推断分辨率，识别失败时可手动指定格式、stride 与 scanline。",
   "大图模式支持滚轮缩放、拖拽平移，状态栏实时显示光标处的 YUV 与 RGB 像素值。",
   "对比模式并排显示同目录下的两张图像，可同步缩放平移，并支持 A/B 交换。",
+  "可将当前图像按原图分辨率导出为 JPG，可选质量；对比模式可导出 A 或 B，文件列表选中的文件也可直接导出。",
   "格式与色彩标准（BT.601 / BT.709）可在工具栏中即时切换。",
   "文件列表支持排序、多选，右键可在系统文件管理器中定位文件。",
 ];
@@ -70,6 +71,7 @@ export function createAboutModal(): { show(deps: AboutModalDeps): void } {
       const shortcuts = section("快捷键", "about-keys", [
         [`${modifier}+O`, "打开文件"],
         [`${modifier}+Shift+O`, "打开文件夹"],
+        [`${modifier}+Shift+E`, "导出为 JPG"],
         ["← / →", "上一张 / 下一张（大图模式）"],
         ["F", "适合窗口"],
         ["1", "实际大小（1:1）"],

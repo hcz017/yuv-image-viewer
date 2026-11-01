@@ -2,6 +2,8 @@ export interface MenuBarDeps {
   openFiles: () => void;
   openFolder: () => void;
   openRecent: (path: string) => void;
+  exportJpeg: () => void;
+  canExport: () => boolean;
   backToList: () => void;
   showAbout: () => void;
 }
@@ -30,9 +32,10 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
     openAnchor = null;
   };
 
-  const item = (label: string, onClick: () => void, shortcut?: string) => {
+  const item = (label: string, onClick: () => void, shortcut?: string, disabled = false) => {
     const button = document.createElement("button");
     button.className = "dropdown-item";
+    button.disabled = disabled;
     const text = document.createElement("span");
     text.textContent = label;
     button.append(text);
@@ -83,6 +86,8 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
     const entries: Array<HTMLElement | "separator"> = [
       item("打开文件…", deps.openFiles, `${modifier}+O`),
       item("打开文件夹…", deps.openFolder, `${modifier}+Shift+O`),
+      "separator",
+      item("导出为 JPG…", deps.exportJpeg, `${modifier}+Shift+E`, !deps.canExport()),
       "separator",
       recent,
       "separator",

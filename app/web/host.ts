@@ -26,6 +26,8 @@ export interface HostApi {
   readFileBytes(path: string): Promise<Uint8Array>;
   pickFiles(): Promise<string[]>;
   pickDirectory(): Promise<string | null>;
+  pickExportPath(name: string): Promise<string | null>;
+  writeJpeg(path: string, data: string): Promise<void>;
   loadConfig(): Promise<AppConfigWire>;
   saveConfig(config: AppConfigWire): Promise<void>;
   takePendingPaths(): Promise<string[][]>;
@@ -50,6 +52,8 @@ export function createHost(): HostApi {
     },
     pickFiles: () => invoke("pick_files"),
     pickDirectory: () => invoke("pick_directory"),
+    pickExportPath: (name) => invoke("pick_export_path", { name }),
+    writeJpeg: (path, data) => invoke("write_jpeg", { path, data }),
     loadConfig: () => invoke("load_config"),
     saveConfig: (cfg) => invoke("save_config", { cfg }),
     takePendingPaths: () => invoke("take_pending_paths"),

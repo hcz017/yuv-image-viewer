@@ -1,6 +1,7 @@
 use crate::error::{FsError, FsErrorKind};
 use crate::paths::{is_supported_path, require_absolute, SUPPORTED_EXTENSIONS};
 use crate::platform::volumes::{self, VolumeInfo};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -149,4 +150,45 @@ pub async fn pick_directory(app: tauri::AppHandle) -> Result<Option<String>, FsE
         .blocking_pick_folder()
         .and_then(|file| file.into_path().ok())
         .map(|path| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn pick_export_path(
+    app: tauri::AppHandle,
+    name: String,
+) -> Result<Option<String>, FsError> {
+    Ok(app
+        .dialog()
+        .file()
+        .add_filter("JPEG Image", &["jpg", "jpeg"])
+        .set_file_name(name)
+        .blocking_save_file()
+        .and_then(|file| file.into_path().ok())
+        .map(|path| path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn write_jpeg(path: String, data: String) -> Result<(), FsError> {
+    let mut target = require_absolute(&path)?;
+    let extension = target
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase());
+    match extension.as_deref() {
+        Some("jpg") | Some("jpeg") => {}
+        Some(_) => {
+            return Err(FsError::new(
+                FsErrorKind::NotSupported,
+                format!("导出路径必须以 .jpg 或 .jpeg 结尾：{}", target.display()),
+            ))
+        }
+        None => {
+            target.set_extension("jpg");
+        }
+    }
+
+    let bytes = STANDARD
+        .decode(data)
+        .map_err(|err| FsError::new(FsErrorKind::Io, format!("JPG 数据无效：{err}")))?;
+    fs::write(&target, bytes).map_err(|err| FsError::from_io(err, &target))
 }

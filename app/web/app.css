@@ -181,6 +181,15 @@ button.primary:hover {
   background: var(--brand-soft);
 }
 
+.dropdown-item:disabled {
+  color: #a3abb2;
+  cursor: default;
+}
+
+.dropdown-item:disabled:hover {
+  background: transparent;
+}
+
 .dropdown-item .shortcut {
   color: var(--muted);
   font-size: 12px;
@@ -213,6 +222,12 @@ button.primary:hover {
   color: #8a5a00;
   border-bottom: 1px solid #f0dcb8;
   font-size: 12px;
+}
+
+.banner.success {
+  background: var(--brand-soft);
+  color: #126a45;
+  border-bottom-color: #c8e6d5;
 }
 
 .layout {
@@ -559,6 +574,15 @@ body.resizing {
 
 .context-menu button:hover {
   background: var(--brand-soft);
+}
+
+.context-menu button:disabled {
+  color: #a3abb2;
+  cursor: default;
+}
+
+.context-menu button:disabled:hover {
+  background: transparent;
 }
 
 .modal-backdrop {

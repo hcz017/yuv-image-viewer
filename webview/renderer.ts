@@ -309,6 +309,15 @@ export class Renderer {
     gl.disable(gl.SCISSOR_TEST);
   }
 
+  readPixels(): Uint8Array {
+    const gl = this.gl;
+    const width = gl.drawingBufferWidth;
+    const height = gl.drawingBufferHeight;
+    const pixels = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    return pixels;
+  }
+
   disposeTextures() {
     const gl = this.gl;
     for (const texture of this.textures) {

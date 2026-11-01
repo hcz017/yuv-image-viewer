@@ -13,6 +13,7 @@ export interface ListDeps {
   policy: PathPolicy;
   onOpen: (path: string) => void;
   onCompare: (paths: readonly string[]) => void;
+  onExport: (path: string) => void;
   onSelect: (order: readonly string[], anchor: string | null) => void;
   onSort: (key: SortKey) => void;
   onReveal: (path: string) => void;
@@ -122,6 +123,11 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
           if (wasSelected && order.length === 2) {
             entries.push({ label: "YUV 对比", onClick: () => deps.onCompare(order) });
           }
+          entries.push({
+            label: "导出为 JPG",
+            onClick: () => deps.onExport(row.path),
+            disabled: wasSelected && order.length > 1,
+          });
           entries.push({ label: deps.revealLabel, onClick: () => deps.onReveal(row.path) });
           showContextMenu(event.clientX, event.clientY, entries);
         };

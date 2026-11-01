@@ -167,6 +167,8 @@ pub fn run() {
             fsapi::read_file_bytes,
             fsapi::pick_files,
             fsapi::pick_directory,
+            fsapi::pick_export_path,
+            fsapi::write_jpeg,
             platform_info,
             load_config,
             save_config,
