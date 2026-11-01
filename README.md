@@ -1,8 +1,18 @@
 # YUV Image Viewer
 
+一个用来看 **YUV 格式图像** 的本地查看器。主要用来查看手机端 camera 产生的 YUV 图像，查看的是**单张图像**，而非连续的视频帧**。
+
 基于 Tauri 2 + 系统 WebView + WebGL2 的跨平台本地 YUV 图像查看器，支持 Windows、macOS 与 Ubuntu。
 
 当前版本：`0.4.0`
+
+界面概览
+
+![](1.image_list.png)
+
+![](2.image_preview.png)
+
+![](3.dual_image_compare.png)
 
 ## 功能
 
@@ -20,14 +30,14 @@
 
 ## 支持格式
 
-| 扩展名 | 格式 | 说明 |
-|---|---|---|
-| `.nv12` | NV12 | Y + 交错 UV |
-| `.nv21` | NV21 | Y + 交错 VU |
-| `.i420` | I420 | Y + U + V 三平面 |
-| `.yv12` | YV12 | Y + V + U 三平面 |
+| 扩展名     | 格式   | 说明                |
+| ------- | ---- | ----------------- |
+| `.nv12` | NV12 | Y + 交错 UV         |
+| `.nv21` | NV21 | Y + 交错 VU         |
+| `.i420` | I420 | Y + U + V 三平面     |
+| `.yv12` | YV12 | Y + V + U 三平面     |
 | `.p010` | P010 | 10-bit，支持高/低位对齐检测 |
-| `.yuv` | 待选择 | 由用户选择具体格式 |
+| `.yuv`  | 待选择  | 由用户选择具体格式         |
 
 扩展名不区分大小写。仅读取第一帧；仅支持 BT.601 / BT.709 的 Full range。
 
@@ -96,11 +106,11 @@ npm run app:package            # 构建前端并执行 tauri build
 
 ## 配置位置
 
-| 平台 | 位置 | `store_location` |
-|---|---|---|
-| Windows | exe 同目录 `config.json`，不可写时回退 `%APPDATA%` | `exe` / `appdata` |
-| macOS | `~/Library/Application Support/com.houchengzhi.yuvimageviewer/config.json` | `appdata` |
-| Ubuntu | `$XDG_CONFIG_HOME/com.houchengzhi.yuvimageviewer/config.json` | `appdata` |
+| 平台      | 位置                                                                         | `store_location`  |
+| ------- | -------------------------------------------------------------------------- | ----------------- |
+| Windows | exe 同目录 `config.json`，不可写时回退 `%APPDATA%`                                   | `exe` / `appdata` |
+| macOS   | `~/Library/Application Support/com.houchengzhi.yuvimageviewer/config.json` | `appdata`         |
+| Ubuntu  | `$XDG_CONFIG_HOME/com.houchengzhi.yuvimageviewer/config.json`              | `appdata`         |
 
 配置使用临时文件 + `fsync` + 原子替换写入。
 
