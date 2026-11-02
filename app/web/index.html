@@ -18,7 +18,21 @@
         <div id="splitter" class="splitter" title="拖动调整侧栏宽度"></div>
         <main class="main">
           <div class="toolbar">
-            <button id="back" class="icon-button" title="返回列表 (Esc)">←</button>
+            <button id="back" class="nav-button" title="返回列表 (Esc)" aria-label="返回列表">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 8H3M7 4L3 8l4 4" />
+              </svg>
+            </button>
+            <button id="prev" class="nav-button hidden" title="上一张 (←)" aria-label="上一张">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 3L5 8l5 5" />
+              </svg>
+            </button>
+            <button id="next" class="nav-button hidden" title="下一张 (→)" aria-label="下一张">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 3l5 5-5 5" />
+              </svg>
+            </button>
             <input id="address" class="address" spellcheck="false" placeholder="输入绝对路径后回车" />
             <button id="go" class="icon-button" title="前往">前往</button>
             <label id="format-control" class="format-control hidden">

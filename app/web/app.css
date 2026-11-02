@@ -353,6 +353,24 @@ body.resizing {
   padding: 4px 9px;
 }
 
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--muted);
+}
+
+.nav-button svg {
+  display: block;
+}
+
+.nav-button:hover {
+  color: var(--text);
+}
+
 .address {
   flex: 1;
   min-width: 120px;

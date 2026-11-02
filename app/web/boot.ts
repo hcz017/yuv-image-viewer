@@ -80,6 +80,8 @@ async function main() {
   const compareSync = required("compare-sync") as HTMLInputElement;
   const compareSwap = required("compare-swap");
   const backButton = required("back");
+  const prevButton = required("prev");
+  const nextButton = required("next");
   const goButton = required("go");
 
   const gate = { paused: false };
@@ -829,6 +831,8 @@ async function main() {
   backButton.addEventListener("click", () => {
     store.dispatch({ type: "backToList" });
   });
+  prevButton.addEventListener("click", () => openNeighbor(-1));
+  nextButton.addEventListener("click", () => openNeighbor(1));
   zoomOneButton.addEventListener("click", () => activeView().oneToOne());
   zoomFitButton.addEventListener("click", () => activeView().fit());
   compareSync.addEventListener("change", () => compare.setSync(compareSync.checked));
@@ -909,6 +913,8 @@ async function main() {
     compareControl.classList.toggle("hidden", kind !== "compare");
     specControl.classList.toggle("hidden", kind !== "single");
     backButton.classList.toggle("hidden", kind === "list");
+    prevButton.classList.toggle("hidden", kind !== "single");
+    nextButton.classList.toggle("hidden", kind !== "single");
     address.classList.toggle("hidden", !inList);
     goButton.classList.toggle("hidden", !inList);
     if (document.activeElement !== address) {
