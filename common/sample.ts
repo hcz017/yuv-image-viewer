@@ -42,6 +42,9 @@ export function readPixel(
 
   const bps = spec.bytesPerSample;
   const yOffset = (y * spec.stride + x) * bps;
+  if (yOffset + bps > data.length) {
+    return null;
+  }
   let yValue = readSample(data, yOffset, bps, alignment);
 
   const chromaRowBytes = spec.stride * bps;
@@ -51,6 +54,9 @@ export function readPixel(
 
   if (spec.format === "nv12" || spec.format === "nv21" || spec.format === "p010") {
     const offset = chromaBase + (y >> 1) * chromaRowBytes + (x >> 1) * 2 * bps;
+    if (offset + 2 * bps > data.length) {
+      return null;
+    }
     const first = readSample(data, offset, bps, alignment);
     const second = readSample(data, offset + bps, bps, alignment);
     if (spec.format === "nv21") {
@@ -64,6 +70,9 @@ export function readPixel(
     const planeSize = Math.floor(spec.stride / 2) * Math.floor(spec.scanline / 2) * bps;
     const offset =
       chromaBase + (y >> 1) * Math.floor(spec.stride / 2) * bps + (x >> 1) * bps;
+    if (offset + planeSize + bps > data.length) {
+      return null;
+    }
     const first = readSample(data, offset, bps, alignment);
     const second = readSample(data, offset + planeSize, bps, alignment);
     if (spec.format === "yv12") {

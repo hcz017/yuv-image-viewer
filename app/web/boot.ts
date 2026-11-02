@@ -62,6 +62,11 @@ async function main() {
   const errorLine = required("error");
   const noticeElement = required("notice");
   const scaleLabel = required("scale");
+  const specControl = required("spec-control");
+  const widthInput = required("spec-width") as HTMLInputElement;
+  const heightInput = required("spec-height") as HTMLInputElement;
+  const strideInput = required("spec-stride") as HTMLInputElement;
+  const scanlineInput = required("spec-scanline") as HTMLInputElement;
   const sidebar = required("sidebar");
   const splitter = required("splitter");
   const formatControl = required("format-control");
@@ -224,6 +229,75 @@ async function main() {
   };
 
   formatSelect.onchange = () => switchFormat(formatSelect.value as YuvFormat);
+
+  const specInputs = [widthInput, heightInput, strideInput, scanlineInput];
+
+  const syncSpecInputs = () => {
+    const image = single.currentImage();
+    widthInput.value = image ? String(image.spec.width) : "";
+    heightInput.value = image ? String(image.spec.height) : "";
+    strideInput.value = image ? String(image.spec.stride) : "";
+    scanlineInput.value = image ? String(image.spec.scanline) : "";
+  };
+
+  const applySpecInputs = () => {
+    const image = single.currentImage();
+    if (!image) {
+      syncSpecInputs();
+      return;
+    }
+    const width = Number(widthInput.value);
+    const height = Number(heightInput.value);
+    const stride = Number(strideInput.value);
+    const scanline = Number(scanlineInput.value);
+    if (
+      width === image.spec.width &&
+      height === image.spec.height &&
+      stride === image.spec.stride &&
+      scanline === image.spec.scanline
+    ) {
+      return;
+    }
+    if (![width, height, stride, scanline].every(Number.isInteger)) {
+      showBanner("宽、高、stride 和 scanline 必须是整数");
+      syncSpecInputs();
+      return;
+    }
+    const spec = makeSpec(width, height, stride, scanline, image.spec.format);
+    const check = validateSpec(spec, image.data.length, maxTextureSize, {
+      allowShort: true,
+    });
+    if (check.kind === "invalid") {
+      showBanner(`无法应用规格：${check.reason ?? "规格不合法"}`);
+      syncSpecInputs();
+      return;
+    }
+    if (!single.updateSpec(spec, image.alignment)) {
+      syncSpecInputs();
+      return;
+    }
+    if (
+      banner.textContent.startsWith("无法应用") ||
+      banner.textContent.startsWith("宽、高")
+    ) {
+      showBanner("");
+    }
+    syncSpecInputs();
+  };
+
+  for (const input of specInputs) {
+    input.addEventListener("change", applySpecInputs);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        syncSpecInputs();
+        input.blur();
+      }
+    });
+  }
 
   const setStandard = (value: "bt601" | "bt709") => {
     colorStandard = value;
@@ -531,6 +605,7 @@ async function main() {
       }
       const payload = payloadOf(file, outcome.file);
       single.show(payload);
+      syncSpecInputs();
       syncFormatSelect(payload.spec.format);
       store.dispatch({
         type: "loadCommit",
@@ -832,6 +907,7 @@ async function main() {
     colorControl.classList.toggle("hidden", inList);
     zoomControl.classList.toggle("hidden", inList);
     compareControl.classList.toggle("hidden", kind !== "compare");
+    specControl.classList.toggle("hidden", kind !== "single");
     backButton.classList.toggle("hidden", kind === "list");
     address.classList.toggle("hidden", !inList);
     goButton.classList.toggle("hidden", !inList);

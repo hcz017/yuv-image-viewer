@@ -26,7 +26,7 @@ export function expectedBytes(spec: Spec): number {
 }
 
 export interface SpecCheck {
-  kind: "ok" | "trailing" | "invalid";
+  kind: "ok" | "short" | "trailing" | "invalid";
   expected: number;
   reason?: string;
 }
@@ -34,7 +34,8 @@ export interface SpecCheck {
 export function validateSpec(
   spec: Spec,
   fileSize: number,
-  maxTextureSize = 16384
+  maxTextureSize = 16384,
+  options: { allowShort?: boolean } = {}
 ): SpecCheck {
   if (!Number.isInteger(spec.width) || !Number.isInteger(spec.height)) {
     return { kind: "invalid", expected: 0, reason: "宽高必须是整数" };
@@ -61,6 +62,9 @@ export function validateSpec(
 
   const expected = expectedBytes(spec);
   if (fileSize < expected) {
+    if (options.allowShort) {
+      return { kind: "short", expected };
+    }
     return {
       kind: "invalid",
       expected,

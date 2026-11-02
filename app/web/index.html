@@ -29,6 +29,24 @@
               <span>色彩标准</span>
               <select id="color-standard"></select>
             </label>
+            <div id="spec-control" class="spec-control hidden">
+              <label class="spec-field">
+                <span>宽</span>
+                <input id="spec-width" class="spec-input" type="number" min="2" step="2" />
+              </label>
+              <label class="spec-field">
+                <span>高</span>
+                <input id="spec-height" class="spec-input" type="number" min="2" step="2" />
+              </label>
+              <label class="spec-field">
+                <span>stride</span>
+                <input id="spec-stride" class="spec-input" type="number" min="1" step="1" />
+              </label>
+              <label class="spec-field">
+                <span>scanline</span>
+                <input id="spec-scanline" class="spec-input" type="number" min="1" step="1" />
+              </label>
+            </div>
             <div id="zoom-control" class="zoom-control hidden">
               <button id="zoom-one" title="按实际大小显示 (1)">1:1</button>
               <button id="zoom-fit" title="按适合窗口显示 (F)">适合窗口</button>

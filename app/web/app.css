@@ -335,9 +335,11 @@ body.resizing {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   gap: 8px;
-  height: 44px;
+  min-height: 44px;
   padding: 0 12px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
@@ -550,6 +552,36 @@ body.resizing {
 
 .scale {
   font-variant-numeric: tabular-nums;
+}
+
+.spec-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.spec-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.spec-input {
+  width: 60px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.spec-input:focus {
+  outline: 2px solid rgba(22, 125, 82, 0.28);
+  border-color: var(--brand);
 }
 
 .context-menu {
