@@ -17,7 +17,6 @@ export interface SpecModal {
     reason: string;
   }): Promise<Spec | null>;
   chooseFormat(name: string): Promise<YuvFormat | null>;
-  chooseAlignment(name: string): Promise<"high" | "low" | null>;
 }
 
 function field(label: string, value: number, step = 2): { row: HTMLElement; input: HTMLInputElement } {
@@ -103,35 +102,6 @@ export function createSpecModal(container: HTMLElement): SpecModal {
 
       return openDialog(container, {
         title: "选择像素格式",
-        body,
-        onSubmit: () => chosen !== null,
-      }).then(() => chosen);
-    },
-
-    chooseAlignment(name) {
-      const body = document.createElement("div");
-      const hint = document.createElement("p");
-      hint.textContent = `无法判断 ${name} 的 P010 数据对齐方式，请选择：`;
-      const list = document.createElement("div");
-      list.className = "format-list";
-      let chosen: "high" | "low" | null = null;
-
-      for (const [value, label] of [
-        ["high", "高位对齐（常见）"],
-        ["low", "低位对齐"],
-      ] as const) {
-        const button = document.createElement("button");
-        button.textContent = label;
-        button.onclick = () => {
-          chosen = value;
-          button.closest(".modal")?.querySelector<HTMLButtonElement>(".primary")?.click();
-        };
-        list.append(button);
-      }
-      body.append(hint, list);
-
-      return openDialog(container, {
-        title: "选择 P010 对齐方式",
         body,
         onSubmit: () => chosen !== null,
       }).then(() => chosen);

@@ -9,7 +9,6 @@ export interface LoadDeps {
   host: HostApi;
   maxTextureSize: number;
   chooseFormat(name: string): Promise<YuvFormat | null>;
-  chooseAlignment(name: string): Promise<"high" | "low" | null>;
   askManual(name: string, fileSize: number, format: YuvFormat, reason: string): Promise<Spec | null>;
   confirmLarge(name: string, size: number): Promise<boolean>;
 }
@@ -99,17 +98,13 @@ export async function loadFile(
       return { kind: "error", message: "读取到的数据短于规格所需字节数" };
     }
 
-    let alignment: P010Alignment =
+    // 无法判断 P010 对齐方式时默认按高位对齐处理
+    const alignment: P010Alignment =
       spec.format === "p010" ? detectP010Alignment(data) : "high";
-    if (alignment === "unknown") {
-      const chosen = await deps.chooseAlignment(stat.name);
-      if (!chosen) {
-        return { kind: "cancelled" };
-      }
-      alignment = chosen;
-    }
+    const resolvedAlignment: P010Alignment =
+      alignment === "unknown" ? "high" : alignment;
 
-    return { kind: "loaded", file: { spec, data, alignment } };
+    return { kind: "loaded", file: { spec, data, alignment: resolvedAlignment } };
   } catch (error) {
     return { kind: "error", message: String(error) };
   }

@@ -535,8 +535,6 @@ async function main() {
     maxTextureSize,
     chooseFormat: (name) =>
       withModal(() => specModal.chooseFormat(name)),
-    chooseAlignment: (name) =>
-      withModal(() => specModal.chooseAlignment(name)),
     askManual: (name, fileSize, format, reason) => {
       const candidate = parseSizeCandidates(name)[0];
       const width = candidate?.width ?? 1920;
