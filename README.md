@@ -26,6 +26,7 @@
 - 大文件（>128 MB）加载确认，加载提示延迟 500 ms
 - 相邻图片预取（最多 4 张，单文件 32 MB，总量 96 MB）
 - 配置持久化：上次目录、最近目录、窗口几何、侧栏宽度、排序、色彩标准
+- 手动规格缓存：按文件路径 + 大小/修改时间校验，命中后自动套用；可在「文件 → 图片规格缓存…」查看与清除
 - 文件名规格解析 → 字节数推测 → 手动规格三级回退
 
 ## 支持格式
@@ -112,11 +113,11 @@ npm run app:package            # 构建前端并执行 tauri build
 | macOS   | `~/Library/Application Support/com.houchengzhi.yuvimageviewer/config.json` | `appdata`         |
 | Ubuntu  | `$XDG_CONFIG_HOME/com.houchengzhi.yuvimageviewer/config.json`              | `appdata`         |
 
-配置使用临时文件 + `fsync` + 原子替换写入。
+配置使用临时文件 + `fsync` + 原子替换写入。规格缓存保存在同一目录的 `spec-cache.json`，同样采用原子替换并串行写入。
 
 ## 测试
 
-- Node：95 项纯逻辑测试（路径策略、规格解析、状态机、选择、视口、采样等）
+- Node：104 项纯逻辑测试（路径策略、规格解析、规格缓存、状态机、选择、视口、采样等）
 - Rust：8 项单元测试（CLI、配置、路径、待处理队列）
 - CI：`windows-latest` / `macos-14` / `ubuntu-22.04` 矩阵执行编译、测试与构建
 

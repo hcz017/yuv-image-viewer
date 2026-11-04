@@ -11,6 +11,13 @@ export interface LoadDeps {
   chooseFormat(name: string): Promise<YuvFormat | null>;
   askManual(name: string, fileSize: number, format: YuvFormat, reason: string): Promise<Spec | null>;
   confirmLarge(name: string, size: number): Promise<boolean>;
+  cachedSpec(
+    path: string,
+    size: number,
+    modifiedMs: number,
+    maxTextureSize: number
+  ): Promise<Spec | null>;
+  saveSpec(path: string, size: number, modifiedMs: number, spec: Spec): Promise<void>;
 }
 
 export interface LoadedFile {
@@ -44,47 +51,63 @@ export async function loadFile(
       }
     }
 
-    let format: YuvFormat | null = fallbackFormat ?? formatFromName(stat.name);
-    if (!format || format === "yuv") {
-      format = await deps.chooseFormat(stat.name);
-      if (!format) {
-        return { kind: "cancelled" };
-      }
-    }
+    // 优先使用与文件路径、大小、修改时间都匹配的缓存规格
+    let spec: Spec | null = await deps.cachedSpec(
+      stat.path,
+      stat.size,
+      stat.modified_ms,
+      deps.maxTextureSize
+    );
 
-    let resolution = resolveSpec({
-      name: stat.name,
-      fileSize: stat.size,
-      format,
-      maxTextureSize: deps.maxTextureSize,
-    });
-
-    if (resolution.kind === "chooseFormat") {
-      const chosen = await deps.chooseFormat(stat.name);
-      if (!chosen) {
-        return { kind: "cancelled" };
+    if (!spec) {
+      let format: YuvFormat | null =
+        fallbackFormat ?? formatFromName(stat.name);
+      if (!format || format === "yuv") {
+        format = await deps.chooseFormat(stat.name);
+        if (!format) {
+          return { kind: "cancelled" };
+        }
       }
-      format = chosen;
-      resolution = resolveSpec({
+
+      let resolution = resolveSpec({
         name: stat.name,
         fileSize: stat.size,
         format,
         maxTextureSize: deps.maxTextureSize,
       });
+
+      if (resolution.kind === "chooseFormat") {
+        const chosen = await deps.chooseFormat(stat.name);
+        if (!chosen) {
+          return { kind: "cancelled" };
+        }
+        format = chosen;
+        resolution = resolveSpec({
+          name: stat.name,
+          fileSize: stat.size,
+          format,
+          maxTextureSize: deps.maxTextureSize,
+        });
+      }
+
+      if (resolution.kind === "resolved") {
+        spec = resolution.spec;
+      } else if (resolution.kind === "manual") {
+        const manual = await deps.askManual(stat.name, stat.size, format, resolution.reason);
+        if (!manual) {
+          return { kind: "cancelled" };
+        }
+        spec = manual;
+        // 只有用户确认手动规格后才写入缓存
+        await deps.saveSpec(stat.path, stat.size, stat.modified_ms, manual);
+      } else if (resolution.kind === "invalid") {
+        return { kind: "error", message: resolution.message };
+      } else {
+        return { kind: "error", message: "无法确定图像的像素格式" };
+      }
     }
 
-    let spec: Spec;
-    if (resolution.kind === "resolved") {
-      spec = resolution.spec;
-    } else if (resolution.kind === "manual") {
-      const manual = await deps.askManual(stat.name, stat.size, format, resolution.reason);
-      if (!manual) {
-        return { kind: "cancelled" };
-      }
-      spec = manual;
-    } else if (resolution.kind === "invalid") {
-      return { kind: "error", message: resolution.message };
-    } else {
+    if (!spec) {
       return { kind: "error", message: "无法确定图像的像素格式" };
     }
 

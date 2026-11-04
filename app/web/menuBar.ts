@@ -4,6 +4,9 @@ export interface MenuBarDeps {
   openRecent: (path: string) => void;
   exportJpeg: () => void;
   canExport: () => boolean;
+  adjustSpec: () => void;
+  canAdjustSpec: () => boolean;
+  manageSpecCache: () => void;
   backToList: () => void;
   showAbout: () => void;
 }
@@ -88,6 +91,9 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
       item("打开文件夹…", deps.openFolder, `${modifier}+Shift+O`),
       "separator",
       item("导出为 JPG…", deps.exportJpeg, `${modifier}+Shift+E`, !deps.canExport()),
+      item("手动设置图像规格…", deps.adjustSpec, undefined, !deps.canAdjustSpec()),
+      "separator",
+      item("图片规格缓存…", deps.manageSpecCache),
       "separator",
       recent,
       "separator",

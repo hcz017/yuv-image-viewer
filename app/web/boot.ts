@@ -9,6 +9,7 @@ import { pushRecentDir } from "../../common/recentDirs";
 import { makeSpec, validateSpec } from "../../common/spec";
 import { fromWireEntry, type FileRow, type SortKey, type YuvFormat } from "../../common/types";
 import { createAboutModal } from "./aboutModal";
+import { createCacheModal } from "./cacheModal";
 import { createCompareView } from "./compareView";
 import { createDelayedNotice } from "./delayedNotice";
 import { encodeJpegBase64, jpegFileName } from "./exportImage";
@@ -22,6 +23,7 @@ import { createOpenPathFlow } from "./openPathFlow";
 import { createPrefetchCache } from "./prefetchCache";
 import { createRenameModal } from "./renameModal";
 import { createSingleView, type ImagePayload } from "./singleView";
+import { createSpecCache } from "./specCache";
 import { createSpecModal } from "./specModal";
 import { nextToken, Store } from "./store";
 import { createTree } from "./tree";
@@ -96,6 +98,7 @@ async function main() {
   const specModal = createSpecModal(document.body);
   const exportModal = createExportModal(document.body);
   const renameModal = createRenameModal(document.body);
+  const cacheModal = createCacheModal(document.body);
   const maxTextureSize = gl.webgl2 && gl.maxTextureSize > 0 ? gl.maxTextureSize : 16384;
 
   const withModal = async <T>(run: () => Promise<T>): Promise<T> => {
@@ -140,6 +143,8 @@ async function main() {
     error && typeof error === "object" && "message" in error
       ? String((error as { message: unknown }).message)
       : String(error);
+
+  const specCache = createSpecCache(host, policy, showBanner);
 
   const revealFileLabel =
     platform.os === "macos"
@@ -225,6 +230,9 @@ async function main() {
     if (!single.updateSpec(spec, alignment)) {
       syncFormatSelect(image.spec.format);
       return;
+    }
+    if (image.path) {
+      void specCache.updateSpec(image.path, spec);
     }
     if (banner.textContent.startsWith("无法切换为")) {
       showBanner("");
@@ -330,6 +338,13 @@ async function main() {
     canExport: () => {
       const state = store.get();
       return state.mode.kind !== "list" || state.selectionOrder.length === 1;
+    },
+    adjustSpec: () => {
+      void adjustCurrentSpec();
+    },
+    canAdjustSpec: () => store.get().mode.kind === "single",
+    manageSpecCache: () => {
+      void openCacheManager();
     },
     backToList: () => {
       store.dispatch({ type: "backToList" });
@@ -437,6 +452,63 @@ async function main() {
     ...host,
     readFileBytes: (path) => cache.read(path),
   };
+
+  async function openCacheManager() {
+    await specCache.load();
+    await withModal(() =>
+      cacheModal.open({
+        entries: () => specCache.list(),
+        basename: (path) => policy.basename(path),
+        remove: (path) => specCache.remove(path),
+        clearAll: () => specCache.clear(),
+      })
+    );
+  }
+
+  async function adjustCurrentSpec() {
+    if (store.get().mode.kind !== "single") {
+      return;
+    }
+    const image = single.currentImage();
+    if (!image) {
+      return;
+    }
+    const spec = await withModal(() =>
+      specModal.openManual({
+        name: image.name,
+        fileSize: image.data.length,
+        maxTextureSize,
+        format: image.spec.format,
+        width: image.spec.width,
+        height: image.spec.height,
+        stride: image.spec.stride,
+        scanline: image.spec.scanline,
+        reason: "手动调整当前图像的规格参数",
+      })
+    );
+    if (!spec) {
+      return;
+    }
+
+    const detected = spec.format === "p010" ? detectP010Alignment(image.data) : "high";
+    const alignment: P010Alignment = detected === "unknown" ? "high" : detected;
+    if (!single.updateSpec(spec, alignment)) {
+      showBanner("无法应用该规格：图像数据不足或超过 GPU 限制");
+      return;
+    }
+    syncFormatSelect(spec.format);
+
+    if (!image.path) {
+      return;
+    }
+    try {
+      const stat = await host.statPath(image.path);
+      await specCache.saveSpec(stat.path, stat.size, stat.modified_ms, spec);
+      showSuccess("已将该规格写入此文件的缓存");
+    } catch (error) {
+      showBanner(`保存规格缓存失败：${errorMessage(error)}`);
+    }
+  }
 
   const exportPane = (id: "a" | "b", image: ImagePayload): ExportPaneOption => ({
     id,
@@ -557,6 +629,10 @@ async function main() {
       withModal(async () =>
         window.confirm(`文件 ${name} 大小为 ${formatBytes(size)}，确认加载吗？`)
       ),
+    cachedSpec: (path, size, modifiedMs, max) =>
+      specCache.cachedSpec(path, size, modifiedMs, max),
+    saveSpec: (path, size, modifiedMs, spec) =>
+      specCache.saveSpec(path, size, modifiedMs, spec),
   };
 
   const payloadOf = (path: string, loaded: LoadedFile): ImagePayload => ({

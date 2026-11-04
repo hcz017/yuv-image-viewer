@@ -46,12 +46,16 @@ pub fn choose_writable(app: &AppHandle) -> Result<(PathBuf, &'static str), Strin
 }
 
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    atomic_write_with_prefix(path, bytes, ".config")
+}
+
+pub fn atomic_write_with_prefix(path: &Path, bytes: &[u8], prefix: &str) -> Result<(), String> {
     let Some(parent) = path.parent() else {
         return Err("配置路径没有父目录".into());
     };
     fs::create_dir_all(parent).map_err(|err| err.to_string())?;
 
-    let tmp = parent.join(format!(".config-{}.tmp", std::process::id()));
+    let tmp = parent.join(format!("{prefix}-{}.tmp", std::process::id()));
     {
         let mut file = fs::File::create(&tmp).map_err(|err| err.to_string())?;
         file.write_all(bytes).map_err(|err| err.to_string())?;

@@ -732,6 +732,51 @@ body.resizing {
   margin-top: 12px;
 }
 
+.cache-modal {
+  width: 620px;
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.cache-list {
+  max-height: 52vh;
+  overflow: auto;
+}
+
+.cache-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cache-row:last-child {
+  border-bottom: none;
+}
+
+.cache-info {
+  min-width: 0;
+}
+
+.cache-name {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.cache-meta {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.cache-row button {
+  flex: none;
+}
+
 .about-modal {
   width: 550px;
   max-height: calc(100vh - 64px);

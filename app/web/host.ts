@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { AppConfigWire } from "../../common/config";
+import type { SpecCacheWire } from "../../common/specCache";
 import type { EntryInfoWire, PlatformInfoWire } from "../../common/types";
 
 export interface VolumeWire {
@@ -31,6 +32,8 @@ export interface HostApi {
   writeJpeg(path: string, data: string): Promise<void>;
   loadConfig(): Promise<AppConfigWire>;
   saveConfig(config: AppConfigWire): Promise<void>;
+  loadSpecCache(): Promise<SpecCacheWire>;
+  saveSpecCache(cache: SpecCacheWire): Promise<void>;
   takePendingPaths(): Promise<string[][]>;
   signalReady(): Promise<boolean>;
   windowGeometry(): Promise<WindowGeometry | null>;
@@ -58,6 +61,8 @@ export function createHost(): HostApi {
     writeJpeg: (path, data) => invoke("write_jpeg", { path, data }),
     loadConfig: () => invoke("load_config"),
     saveConfig: (cfg) => invoke("save_config", { cfg }),
+    loadSpecCache: () => invoke("load_spec_cache"),
+    saveSpecCache: (cache) => invoke("save_spec_cache", { cache }),
     takePendingPaths: () => invoke("take_pending_paths"),
     signalReady: () => invoke("signal_ready"),
     windowGeometry: async () => {

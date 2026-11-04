@@ -6,12 +6,14 @@ mod paths;
 mod pending_paths;
 mod platform;
 mod runtime;
+mod spec_cache;
 
 use config::{AppConfig, WindowConfig};
 use error::{FsError, FsErrorKind};
 use pending_paths::PendingPaths;
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 
 pub struct ReadyState(AtomicBool);
@@ -134,7 +136,8 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(ReadyState(AtomicBool::new(false)))
-        .manage(PendingPaths::default());
+        .manage(PendingPaths::default())
+        .manage(spec_cache::SpecCacheLock(Mutex::new(())));
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(
@@ -173,6 +176,8 @@ pub fn run() {
             platform_info,
             load_config,
             save_config,
+            spec_cache::load_spec_cache,
+            spec_cache::save_spec_cache,
             take_pending_paths,
             signal_ready,
         ])
