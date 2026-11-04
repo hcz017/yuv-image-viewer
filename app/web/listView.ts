@@ -69,13 +69,17 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
 
   return {
     render(state, rows) {
+      const needle = state.filter.trim().toLowerCase();
+      const visibleRows = needle
+        ? rows.filter((row) => row.name.toLowerCase().includes(needle))
+        : rows;
       currentState = state;
-      currentRows = rows;
+      currentRows = visibleRows;
       body.textContent = "";
 
       const selection = new Set(state.selectionOrder.map((path) => deps.policy.key(path)));
 
-      for (const row of rows) {
+      for (const row of visibleRows) {
         const tr = document.createElement("tr");
         tr.dataset.path = row.path;
         const selected = selection.has(deps.policy.key(row.path));
@@ -136,12 +140,16 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
         body.append(tr);
       }
 
-      if (rows.length === 0) {
+      if (visibleRows.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
         td.colSpan = 6;
         td.className = "list-empty";
-        td.textContent = state.dir ? "此目录没有受支持的 YUV 文件" : "选择一个目录开始";
+        td.textContent = !state.dir
+          ? "选择一个目录开始"
+          : needle
+            ? "没有匹配的文件"
+            : "此目录没有受支持的 YUV 文件";
         tr.append(td);
         body.append(tr);
       }

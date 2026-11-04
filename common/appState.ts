@@ -13,6 +13,7 @@ export interface AppState {
   selectionAnchor: string | null;
   sortKey: SortKey;
   sortDesc: boolean;
+  filter: string;
   generation: number;
   pendingMode: Exclude<Mode, { kind: "list" }> | null;
   pendingRows: readonly FileRow[] | null;
@@ -37,6 +38,7 @@ export type Action =
   | { type: "loadAbort"; token: number; error: string }
   | { type: "pathError"; message: string }
   | { type: "setSort"; key: SortKey }
+  | { type: "setFilter"; value: string }
   | { type: "backToList" }
   | { type: "swapCompare" }
   | { type: "setModal"; open: boolean }
@@ -51,6 +53,7 @@ export function initialState(dir = ""): AppState {
     selectionAnchor: null,
     sortKey: "name",
     sortDesc: false,
+    filter: "",
     generation: 0,
     pendingMode: null,
     pendingRows: null,
@@ -92,6 +95,7 @@ export function reduce(state: AppState, action: Action): AppState {
         rows: action.rows,
         selectionOrder: sameDir ? state.selectionOrder : [],
         selectionAnchor: sameDir ? state.selectionAnchor : null,
+        filter: sameDir ? state.filter : "",
         pendingMode: null,
         pendingRows: null,
         displayedFile: null,
@@ -143,6 +147,14 @@ export function reduce(state: AppState, action: Action): AppState {
         ...state,
         sortKey: action.key,
         sortDesc: state.sortKey === action.key ? !state.sortDesc : false,
+      };
+
+    case "setFilter":
+      return {
+        ...state,
+        filter: action.value,
+        selectionOrder: [],
+        selectionAnchor: null,
       };
 
     case "backToList":

@@ -57,6 +57,8 @@ async function main() {
   const listHost = required("list");
   const stage = required("stage");
   const address = required("address") as HTMLInputElement;
+  const searchControl = required("search-control");
+  const searchInput = required("search") as HTMLInputElement;
   const readout = required("readout");
   const fileCaption = required("file-caption");
   const errorLine = required("error");
@@ -828,6 +830,9 @@ async function main() {
       void openFlow.open([value]);
     }
   });
+  searchInput.addEventListener("input", () => {
+    store.dispatch({ type: "setFilter", value: searchInput.value });
+  });
   backButton.addEventListener("click", () => {
     store.dispatch({ type: "backToList" });
   });
@@ -917,8 +922,12 @@ async function main() {
     nextButton.classList.toggle("hidden", kind !== "single");
     address.classList.toggle("hidden", !inList);
     goButton.classList.toggle("hidden", !inList);
+    searchControl.classList.toggle("hidden", !inList);
     if (document.activeElement !== address) {
       address.value = state.dir;
+    }
+    if (document.activeElement !== searchInput) {
+      searchInput.value = state.filter;
     }
     errorLine.textContent = state.error ?? "";
     const caption = captionOf(state.mode);

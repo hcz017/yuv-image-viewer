@@ -349,6 +349,26 @@ body.resizing {
   flex: 1;
 }
 
+.search-control {
+  display: flex;
+  align-items: center;
+}
+
+.search-control input {
+  width: 220px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: #fbfcfd;
+  user-select: text;
+}
+
+.search-control input:focus {
+  outline: 2px solid rgba(22, 125, 82, 0.28);
+  border-color: var(--brand);
+}
+
 .icon-button {
   padding: 4px 9px;
 }
