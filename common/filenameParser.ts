@@ -24,15 +24,29 @@ function collect(input: string): SizeCandidate[] {
   return matches;
 }
 
+const EXTENSION_FORMATS: Record<string, YuvFormat> = {
+  nv12: "nv12",
+  nv21: "nv21",
+  i420: "i420",
+  yv12: "yv12",
+  p010: "p010",
+  yuv: "yuv",
+  yuyv: "yuyv",
+  uyvy: "uyvy",
+  gray: "gray",
+  grey: "gray",
+  jpg: "jpg",
+  jpeg: "jpg",
+  png: "png",
+};
+
 export function formatFromName(name: string): YuvFormat | null {
   const dot = name.lastIndexOf(".");
   if (dot < 0) {
     return null;
   }
   const ext = name.slice(dot + 1).toLowerCase();
-  return ["nv12", "nv21", "i420", "yv12", "p010", "yuv"].includes(ext)
-    ? (ext as YuvFormat)
-    : null;
+  return EXTENSION_FORMATS[ext] ?? null;
 }
 
 export function parseSizeCandidates(name: string): SizeCandidate[] {

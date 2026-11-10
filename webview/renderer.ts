@@ -1,5 +1,6 @@
 import { coefficients } from "../common/colorspace";
 import type { P010Alignment } from "../common/bitdepth";
+import { layoutOf } from "../common/spec";
 import type { ColorStandard, Spec } from "../common/types";
 import { FRAGMENT_SHADER, VERTEX_SHADER, shaderMode } from "./shaders";
 
@@ -90,6 +91,38 @@ function readPlane(
     : padPlane(source, offset, length, fill);
 }
 
+// YUYV: Y0 U Y1 V；UYVY: U Y0 V Y1。拆成亮度平面 + 半宽 RG 色度平面。
+function splitPacked422(
+  spec: Spec,
+  source: Uint8Array
+): { luma: Uint8Array; chroma: Uint8Array } {
+  const rowBytes = spec.stride * 2;
+  const chromaWidth = Math.floor(spec.stride / 2);
+  const luma = new Uint8Array(spec.stride * spec.scanline);
+  const chroma = new Uint8Array(chromaWidth * spec.scanline * 2);
+  const yuyv = spec.format === "yuyv";
+  const lumaOffset = yuyv ? 0 : 1;
+
+  for (let row = 0; row < spec.scanline; row++) {
+    const sourceRow = row * rowBytes;
+    const lumaRow = row * spec.stride;
+    for (let x = 0; x < spec.stride; x++) {
+      const offset = sourceRow + x * 2 + lumaOffset;
+      luma[lumaRow + x] = offset < source.length ? source[offset] : 0;
+    }
+    const chromaRow = row * chromaWidth * 2;
+    for (let x = 0; x < chromaWidth; x++) {
+      const offset = sourceRow + x * 4;
+      const uOffset = offset + (yuyv ? 1 : 0);
+      const vOffset = offset + (yuyv ? 3 : 2);
+      chroma[chromaRow + x * 2] = uOffset < source.length ? source[uOffset] : 128;
+      chroma[chromaRow + x * 2 + 1] = vOffset < source.length ? source[vOffset] : 128;
+    }
+  }
+
+  return { luma, chroma };
+}
+
 export class Renderer {
   readonly maxTextureSize: number;
   private readonly gl: WebGL2RenderingContext;
@@ -154,27 +187,32 @@ export class Renderer {
       return false;
     }
 
-    const yBytes = spec.stride * spec.scanline * bps;
-    const yData = readPlane(data, 0, yBytes, [0]);
-
     this.disposeTextures();
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
-    const yTex = this.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, yTex);
-    if (bps === 2) {
+    const layout = layoutOf(spec.format);
+
+    if (layout === "rgba") {
+      const rgbaData = readPlane(data, 0, spec.stride * spec.scanline * 4, [0, 0, 0, 255]);
+      const texture = this.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
-        gl.RG8,
+        gl.RGBA8,
         spec.stride,
         spec.scanline,
         0,
-        gl.RG,
+        gl.RGBA,
         gl.UNSIGNED_BYTE,
-        yData
+        rgbaData
       );
-    } else {
+      this.applyTextureParams();
+      this.textures = [texture, texture, texture];
+    } else if (layout === "gray") {
+      const grayData = readPlane(data, 0, spec.stride * spec.scanline, [0]);
+      const texture = this.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -184,61 +222,126 @@ export class Renderer {
         0,
         gl.RED,
         gl.UNSIGNED_BYTE,
-        yData
+        grayData
       );
-    }
-    this.applyTextureParams();
-
-    const chromaWidth = Math.floor(spec.stride / 2);
-    const chromaHeight = Math.floor(spec.scanline / 2);
-    const chromaBase = yBytes;
-
-    if (spec.format === "i420" || spec.format === "yv12") {
-      const planeSize = chromaWidth * chromaHeight * bps;
-      const uOffset =
-        spec.format === "yv12" ? chromaBase + planeSize : chromaBase;
-      const vOffset =
-        spec.format === "yv12" ? chromaBase : chromaBase + planeSize;
-      const fill = chromaFill(bps, alignment);
-      const uTex = this.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, uTex);
-      this.texImageChroma(chromaWidth, chromaHeight, data, uOffset, planeSize, fill);
-      const vTex = this.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, vTex);
-      this.texImageChroma(chromaWidth, chromaHeight, data, vOffset, planeSize, fill);
-      this.textures = [yTex, uTex, vTex];
-    } else {
+      this.applyTextureParams();
+      this.textures = [texture, texture, texture];
+    } else if (layout === "422") {
+      const { luma, chroma } = splitPacked422(spec, data);
+      const yTex = this.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, yTex);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.R8,
+        spec.stride,
+        spec.scanline,
+        0,
+        gl.RED,
+        gl.UNSIGNED_BYTE,
+        luma
+      );
+      this.applyTextureParams();
+      const chromaWidth = Math.floor(spec.stride / 2);
       const chromaTex = this.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, chromaTex);
-      const chromaLen = chromaWidth * chromaHeight * 2 * bps;
-      const chromaData = readPlane(data, chromaBase, chromaLen, chromaFill(bps, alignment));
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RG8,
+        chromaWidth,
+        spec.scanline,
+        0,
+        gl.RG,
+        gl.UNSIGNED_BYTE,
+        chroma
+      );
+      this.applyTextureParams();
+      this.textures = [yTex, chromaTex, chromaTex];
+    } else {
+      const yBytes = spec.stride * spec.scanline * bps;
+      const yData = readPlane(data, 0, yBytes, [0]);
+
+      const yTex = this.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, yTex);
       if (bps === 2) {
         gl.texImage2D(
           gl.TEXTURE_2D,
           0,
-          gl.RGBA8,
-          chromaWidth,
-          chromaHeight,
+          gl.RG8,
+          spec.stride,
+          spec.scanline,
           0,
-          gl.RGBA,
+          gl.RG,
           gl.UNSIGNED_BYTE,
-          chromaData
+          yData
         );
       } else {
         gl.texImage2D(
           gl.TEXTURE_2D,
           0,
-          gl.RG8,
-          chromaWidth,
-          chromaHeight,
+          gl.R8,
+          spec.stride,
+          spec.scanline,
           0,
-          gl.RG,
+          gl.RED,
           gl.UNSIGNED_BYTE,
-          chromaData
+          yData
         );
       }
       this.applyTextureParams();
-      this.textures = [yTex, chromaTex, chromaTex];
+
+      const chromaWidth = Math.floor(spec.stride / 2);
+      const chromaHeight = Math.floor(spec.scanline / 2);
+      const chromaBase = yBytes;
+
+      if (spec.format === "i420" || spec.format === "yv12") {
+        const planeSize = chromaWidth * chromaHeight * bps;
+        const uOffset =
+          spec.format === "yv12" ? chromaBase + planeSize : chromaBase;
+        const vOffset =
+          spec.format === "yv12" ? chromaBase : chromaBase + planeSize;
+        const fill = chromaFill(bps, alignment);
+        const uTex = this.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, uTex);
+        this.texImageChroma(chromaWidth, chromaHeight, data, uOffset, planeSize, fill);
+        const vTex = this.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, vTex);
+        this.texImageChroma(chromaWidth, chromaHeight, data, vOffset, planeSize, fill);
+        this.textures = [yTex, uTex, vTex];
+      } else {
+        const chromaTex = this.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, chromaTex);
+        const chromaLen = chromaWidth * chromaHeight * 2 * bps;
+        const chromaData = readPlane(data, chromaBase, chromaLen, chromaFill(bps, alignment));
+        if (bps === 2) {
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA8,
+            chromaWidth,
+            chromaHeight,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            chromaData
+          );
+        } else {
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RG8,
+            chromaWidth,
+            chromaHeight,
+            0,
+            gl.RG,
+            gl.UNSIGNED_BYTE,
+            chromaData
+          );
+        }
+        this.applyTextureParams();
+        this.textures = [yTex, chromaTex, chromaTex];
+      }
     }
 
     this.spec = spec;

@@ -1,18 +1,19 @@
 import { initialState, type AppState } from "../../common/appState";
 import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { decodeConfig, encodeConfig, type AppConfig } from "../../common/config";
+import { exportFileName, replaceExtension } from "../../common/exportName";
 import { neighborPath, rowsFromEntries, sortRows } from "../../common/fileEntry";
 import { parseSizeCandidates } from "../../common/filenameParser";
 import { formatBytes } from "../../common/listMeta";
 import { createPathPolicy, type PathPolicy } from "../../common/pathPolicy";
 import { pushRecentDir } from "../../common/recentDirs";
-import { makeSpec, validateSpec } from "../../common/spec";
+import { isImageFormat, makeSpec, validateSpec } from "../../common/spec";
 import { fromWireEntry, type FileRow, type SortKey, type YuvFormat } from "../../common/types";
 import { createAboutModal } from "./aboutModal";
 import { createCacheModal } from "./cacheModal";
 import { createCompareView } from "./compareView";
 import { createDelayedNotice } from "./delayedNotice";
-import { encodeJpegBase64, jpegFileName } from "./exportImage";
+import { encodeImageBase64 } from "./exportImage";
 import { createExportModal, type ExportPaneOption } from "./exportModal";
 import { probeGl } from "./glProbe";
 import { createHost, type HostApi } from "./host";
@@ -93,6 +94,8 @@ async function main() {
   let recentDirs: string[] = [...config.recentDirs];
   let sidebarWidth = config.sidebarWidth;
   let saveTimer: number | null = null;
+  // 批量转换进行中禁止再次触发（菜单项与快捷键共用）
+  let batchRunning = false;
 
   const notice = createDelayedNotice(noticeElement, 500);
   const specModal = createSpecModal(document.body);
@@ -184,16 +187,25 @@ async function main() {
 
   stage.append(single.element, compare.element);
 
-  const FORMATS: YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010"];
+  const FORMATS: YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010", "yuyv", "uyvy", "gray"];
   for (const format of FORMATS) {
     const option = document.createElement("option");
     option.value = format;
     option.textContent = format.toUpperCase();
     formatSelect.append(option);
   }
+  for (const format of ["jpg", "png"] as const) {
+    const option = document.createElement("option");
+    option.value = format;
+    option.textContent = format.toUpperCase();
+    option.disabled = true;
+    formatSelect.append(option);
+  }
 
   const syncFormatSelect = (format: YuvFormat) => {
     formatSelect.value = format;
+    // JPEG/PNG 的像素来自解码结果，不能切换原始像素格式
+    formatSelect.disabled = isImageFormat(format);
   };
 
   for (const [value, label] of [
@@ -246,6 +258,10 @@ async function main() {
 
   const syncSpecInputs = () => {
     const image = single.currentImage();
+    const locked = image !== null && isImageFormat(image.spec.format);
+    for (const input of specInputs) {
+      input.disabled = locked;
+    }
     widthInput.value = image ? String(image.spec.width) : "";
     heightInput.value = image ? String(image.spec.height) : "";
     strideInput.value = image ? String(image.spec.stride) : "";
@@ -332,17 +348,31 @@ async function main() {
     openRecent: (dir) => {
       void openFlow.open([dir]);
     },
-    exportJpeg: () => {
-      void exportJpeg();
+    exportImage: () => {
+      void exportImage();
     },
     canExport: () => {
       const state = store.get();
       return state.mode.kind !== "list" || state.selectionOrder.length === 1;
     },
+    batchConvert: () => {
+      void batchConvert();
+    },
+    canBatchConvert: () => {
+      const state = store.get();
+      return !batchRunning && state.mode.kind === "list" && state.rows.length > 0;
+    },
     adjustSpec: () => {
       void adjustCurrentSpec();
     },
-    canAdjustSpec: () => store.get().mode.kind === "single",
+    canAdjustSpec: () => {
+      const image = single.currentImage();
+      return (
+        store.get().mode.kind === "single" &&
+        image !== null &&
+        !isImageFormat(image.spec.format)
+      );
+    },
     manageSpecCache: () => {
       void openCacheManager();
     },
@@ -420,7 +450,7 @@ async function main() {
       store.dispatch({ type: "select", order, anchor });
     },
     onExport: (path) => {
-      void exportJpeg(path);
+      void exportImage(path);
     },
     onSort: (key) => {
       store.dispatch({ type: "setSort", key });
@@ -517,14 +547,14 @@ async function main() {
     height: image.spec.height,
   });
 
-  async function exportJpeg(targetPath?: string) {
+  async function exportImage(targetPath?: string) {
     const state = store.get();
     let imageA: ImagePayload | null = null;
     let imageB: ImagePayload | null = null;
 
     if (state.mode.kind === "list") {
       if (state.selectionOrder.length > 1) {
-        showBanner("导出 JPG 一次只能处理一个文件，请只选择一个文件");
+        showBanner("导出图片一次只能处理一个文件，请只选择一个文件");
         return;
       }
       const path = targetPath ?? state.selectionOrder[0] ?? null;
@@ -566,7 +596,7 @@ async function main() {
       panes.push(exportPane("b", imageB));
     }
     if (panes.length === 0) {
-      showBanner("请先打开图像再导出 JPG");
+      showBanner("请先打开图像再导出");
       return;
     }
 
@@ -578,10 +608,11 @@ async function main() {
     if (!image) {
       return;
     }
+    const label = choice.format.toUpperCase();
 
     let target: string | null;
     try {
-      target = await host.pickExportPath(jpegFileName(image.name));
+      target = await host.pickExportPath(exportFileName(image.name, choice.format), choice.format);
     } catch (error) {
       showBanner(`无法选择保存位置：${errorMessage(error)}`);
       return;
@@ -590,13 +621,13 @@ async function main() {
       return;
     }
 
-    notice.show("正在导出 JPG…");
+    notice.show(`正在导出 ${label}…`);
     try {
-      const data = encodeJpegBase64(image, colorStandard, choice.quality);
-      await host.writeJpeg(target, data);
-      showSuccess(`已导出 JPG：${policy.basename(target)}`);
+      const data = encodeImageBase64(image, colorStandard, choice.format, choice.quality);
+      await host.writeImage(target, data, choice.format);
+      showSuccess(`已导出 ${label}：${policy.basename(target)}`);
     } catch (error) {
-      showBanner(`导出 JPG 失败：${errorMessage(error)}`);
+      showBanner(`导出 ${label} 失败：${errorMessage(error)}`);
     } finally {
       notice.hide();
     }
@@ -642,6 +673,135 @@ async function main() {
     name: policy.basename(path),
     path,
   });
+
+  const batchDeps: LoadDeps = { ...loadDeps, host };
+
+  const targetExists = async (path: string): Promise<boolean> => {
+    try {
+      await host.statPath(path);
+      return true;
+    } catch (error) {
+      return (error as { kind?: unknown }).kind !== "not_found";
+    }
+  };
+
+  async function refreshCurrentList() {
+    const state = store.get();
+    if (state.mode.kind !== "list") {
+      return;
+    }
+    const token = nextToken();
+    store.dispatch({ type: "requestStarted", token });
+    const entries = await host.listDirEntries(state.dir);
+    const rows = sortRows(rowsFromEntries(entries.map(fromWireEntry)), state.sortKey, state.sortDesc);
+    if (store.get().generation !== token) {
+      return;
+    }
+    store.dispatch({ type: "openDir", token, dir: state.dir, rows });
+  }
+
+  async function batchConvert() {
+    if (batchRunning) {
+      return;
+    }
+    const state = store.get();
+    if (state.mode.kind !== "list") {
+      showBanner("请回到文件列表后再进行批量转换");
+      return;
+    }
+    const selected = new Set(state.selectionOrder.map((path) => policy.key(path)));
+    const targets =
+      state.selectionOrder.length > 0
+        ? state.rows.map((row) => row.path).filter((path) => selected.has(policy.key(path)))
+        : state.rows.map((row) => row.path);
+    if (targets.length === 0) {
+      showBanner("当前列表没有可转换的文件");
+      return;
+    }
+
+    batchRunning = true;
+    try {
+      const choice = await withModal(() => exportModal.chooseBatch(targets.length));
+      if (!choice) {
+        return;
+      }
+      const label = choice.format.toUpperCase();
+
+      let converted = 0;
+      let skipped = 0;
+      let sameFormat = 0;
+      let aborted = false;
+      const failures: string[] = [];
+      notice.show(`正在转换 0/${targets.length}…`);
+      try {
+        for (let index = 0; index < targets.length; index++) {
+          if (store.get().generation !== state.generation) {
+            aborted = true;
+            break;
+          }
+          const path = targets[index];
+          notice.show(`正在转换 ${index + 1}/${targets.length}…`);
+          const target = replaceExtension(path, choice.format);
+          // 源文件已经是目标格式，无需转换，也不属于「目标已存在」
+          if (policy.key(target) === policy.key(path)) {
+            sameFormat++;
+            continue;
+          }
+          if (await targetExists(target)) {
+            skipped++;
+            continue;
+          }
+          const outcome = await loadFile(batchDeps, path, null, { interactive: false });
+          if (outcome.kind !== "loaded") {
+            failures.push(
+              `${policy.basename(path)}：${outcome.kind === "error" ? outcome.message : "已取消"}`
+            );
+            continue;
+          }
+          try {
+            const image = payloadOf(path, outcome.file);
+            const data = encodeImageBase64(image, colorStandard, choice.format, choice.quality);
+            await host.writeImage(target, data, choice.format);
+            converted++;
+          } catch (error) {
+            failures.push(`${policy.basename(path)}：${errorMessage(error)}`);
+          }
+        }
+      } finally {
+        notice.hide();
+      }
+
+      if (!aborted && converted > 0) {
+        try {
+          await refreshCurrentList();
+        } catch (error) {
+          showBanner(`已转换 ${converted} 个文件，但刷新列表失败：${errorMessage(error)}`);
+          return;
+        }
+      }
+
+      const parts = [`${aborted ? "转换已中断，已转换" : "已转换"} ${converted} 个文件`];
+      if (sameFormat > 0) {
+        parts.push(`跳过 ${sameFormat} 个（已是 ${label} 格式）`);
+      }
+      if (skipped > 0) {
+        parts.push(`跳过 ${skipped} 个（目标已存在）`);
+      }
+      if (failures.length > 0) {
+        parts.push(`失败 ${failures.length} 个`);
+      }
+      const summary = `${parts.join("，")}（${label}）`;
+      if (failures.length > 0) {
+        showBanner(
+          `${summary}；${failures.slice(0, 3).join("；")}${failures.length > 3 ? " 等" : ""}`
+        );
+      } else {
+        showSuccess(summary);
+      }
+    } finally {
+      batchRunning = false;
+    }
+  }
 
   const prefetchAround = (rows: readonly FileRow[], path: string) => {
     const index = rows.findIndex((row) => policy.key(row.path) === policy.key(path));
@@ -943,7 +1103,15 @@ async function main() {
 
     if (modifier && event.shiftKey && event.key.toLowerCase() === "e") {
       event.preventDefault();
-      void exportJpeg();
+      void exportImage();
+      return;
+    }
+
+    if (modifier && event.shiftKey && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      if (state.mode.kind === "list") {
+        void batchConvert();
+      }
       return;
     }
 
@@ -991,6 +1159,18 @@ async function main() {
     zoomControl.classList.toggle("hidden", inList);
     compareControl.classList.toggle("hidden", kind !== "compare");
     specControl.classList.toggle("hidden", kind !== "single");
+    // JPEG/PNG 已解码为 RGB，色彩标准不参与转换，禁止切换
+    if (kind === "single") {
+      const image = single.currentImage();
+      colorSelect.disabled = image !== null && isImageFormat(image.spec.format);
+    } else if (kind === "compare") {
+      const current = compare.current();
+      colorSelect.disabled = ![current.a, current.b].some(
+        (image) => image !== null && !isImageFormat(image.spec.format)
+      );
+    } else {
+      colorSelect.disabled = true;
+    }
     backButton.classList.toggle("hidden", kind === "list");
     prevButton.classList.toggle("hidden", kind !== "single");
     nextButton.classList.toggle("hidden", kind !== "single");

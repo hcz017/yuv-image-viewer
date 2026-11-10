@@ -14,7 +14,18 @@ export interface EntryInfo {
   modifiedMs: number;
 }
 
-export type YuvFormat = "nv12" | "nv21" | "i420" | "yv12" | "p010" | "yuv";
+export type YuvFormat =
+  | "nv12"
+  | "nv21"
+  | "i420"
+  | "yv12"
+  | "p010"
+  | "yuyv"
+  | "uyvy"
+  | "gray"
+  | "jpg"
+  | "png"
+  | "yuv";
 
 export type ColorStandard = "bt601" | "bt709";
 

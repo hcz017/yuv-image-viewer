@@ -16,6 +16,41 @@ test("p010 byte count doubles", () => {
   assert.equal(expectedBytes(spec), 921600);
 });
 
+test("yuyv and uyvy use two bytes per pixel", () => {
+  assert.equal(expectedBytes(makeSpec(640, 480, 640, 480, "yuyv")), 614400);
+  assert.equal(expectedBytes(makeSpec(640, 480, 640, 480, "uyvy")), 614400);
+});
+
+test("gray uses one byte per pixel", () => {
+  assert.equal(expectedBytes(makeSpec(640, 480, 640, 480, "gray")), 307200);
+});
+
+test("jpeg and png are stored as rgba pixels", () => {
+  assert.equal(expectedBytes(makeSpec(640, 480, 640, 480, "jpg")), 1228800);
+  assert.equal(expectedBytes(makeSpec(640, 480, 640, 480, "png")), 1228800);
+});
+
+test("gray and image formats allow odd dimensions", () => {
+  assert.equal(validateSpec(makeSpec(641, 481, 641, 481, "gray"), 1e9).kind, "trailing");
+  assert.equal(validateSpec(makeSpec(641, 481, 641, 481, "png"), 1e9).kind, "trailing");
+});
+
+test("packed 4:2:2 still requires an even width", () => {
+  assert.equal(validateSpec(makeSpec(641, 480, 641, 480, "yuyv"), 1e9).kind, "invalid");
+  assert.equal(validateSpec(makeSpec(640, 480, 640, 480, "yuyv"), 614400).kind, "ok");
+});
+
+test("size guessing is skipped for jpeg and png", () => {
+  assert.deepEqual(guessSpecsBySize(1228800, "png"), []);
+  assert.deepEqual(guessSpecsBySize(1228800, "jpg"), []);
+});
+
+test("size guessing finds a yuyv layout", () => {
+  const guesses = guessSpecsBySize(614400, "yuyv");
+  assert.equal(guesses[0].width, 640);
+  assert.equal(guesses[0].height, 480);
+});
+
 test("stride padding is part of the byte count", () => {
   const spec = makeSpec(1920, 1080, 2048, 1088, "nv12");
   assert.equal(expectedBytes(spec), (2048 * 1088 * 3) / 2);

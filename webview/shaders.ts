@@ -31,6 +31,12 @@ float low10(float lo, float hi) {
 }
 
 void main() {
+  if (uMode == 5) {
+    // JPEG/PNG 解码后直接是 RGBA 像素
+    fragColor = texture(uC0, vUV);
+    return;
+  }
+
   float y;
   float u;
   float v;
@@ -54,6 +60,10 @@ void main() {
     vec4 c = texture(uC0, vUV);
     u = sample8(c.g);
     v = sample8(c.a);
+  } else if (uMode == 6) {
+    y = sample8(texture(uY, vUV).r);
+    u = 128.0;
+    v = 128.0;
   } else {
     y = low10(texture(uY, vUV).r, texture(uY, vUV).g) / 4.0;
     vec4 c = texture(uC0, vUV);
@@ -82,6 +92,16 @@ export function shaderMode(format: string, alignment: "high" | "low" | "unknown"
       return 2;
     case "p010":
       return alignment === "low" ? 4 : 3;
+    case "yuyv":
+    case "uyvy":
+      // 422 色度纹理按「半宽、全高」RG8 组织（U 在 R、V 在 G），
+      // 归一化 UV 采样结果与 NV12 一致，因此复用 mode 0
+      return 0;
+    case "jpg":
+    case "png":
+      return 5;
+    case "gray":
+      return 6;
     default:
       return 0;
   }

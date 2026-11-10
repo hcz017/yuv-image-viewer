@@ -3,7 +3,7 @@ import type { Spec, YuvFormat } from "./types";
 
 export const SPEC_CACHE_VERSION = 1;
 
-const FORMATS: readonly YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010"];
+const FORMATS: readonly YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010", "yuyv", "uyvy", "gray"];
 
 export interface SpecCacheEntryWire {
   path: string;

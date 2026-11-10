@@ -1,7 +1,10 @@
 use crate::error::FsError;
 use std::path::{Path, PathBuf};
 
-pub const SUPPORTED_EXTENSIONS: [&str; 6] = ["nv12", "nv21", "i420", "yv12", "p010", "yuv"];
+pub const SUPPORTED_EXTENSIONS: [&str; 13] = [
+    "nv12", "nv21", "i420", "yv12", "p010", "yuv", "yuyv", "uyvy", "gray", "grey", "jpg", "jpeg",
+    "png",
+];
 
 pub fn extension_of(path: &Path) -> Option<String> {
     path.extension()
@@ -31,7 +34,11 @@ mod tests {
     fn extension_matching_is_case_insensitive() {
         assert!(is_supported_path(Path::new("/tmp/frame.NV12")));
         assert!(is_supported_path(Path::new("/tmp/frame.P010")));
-        assert!(!is_supported_path(Path::new("/tmp/frame.png")));
+        assert!(is_supported_path(Path::new("/tmp/frame.yuyv")));
+        assert!(is_supported_path(Path::new("/tmp/frame.GRAY")));
+        assert!(is_supported_path(Path::new("/tmp/frame.png")));
+        assert!(is_supported_path(Path::new("/tmp/frame.JPG")));
+        assert!(!is_supported_path(Path::new("/tmp/frame.bmp")));
         assert!(!is_supported_path(Path::new("/tmp/frame")));
     }
 

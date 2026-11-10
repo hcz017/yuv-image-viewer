@@ -129,7 +129,7 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
             entries.push({ label: "YUV 对比", onClick: () => deps.onCompare(order) });
           }
           entries.push({
-            label: "导出为 JPG",
+            label: "导出为图片…",
             onClick: () => deps.onExport(row.path),
             disabled: wasSelected && order.length > 1,
           });
@@ -149,7 +149,7 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
           ? "选择一个目录开始"
           : needle
             ? "没有匹配的文件"
-            : "此目录没有受支持的 YUV 文件";
+            : "此目录没有受支持的文件";
         tr.append(td);
         body.append(tr);
       }

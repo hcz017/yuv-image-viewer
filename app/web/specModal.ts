@@ -2,7 +2,16 @@ import { makeSpec, validateSpec } from "../../common/spec";
 import type { Spec, YuvFormat } from "../../common/types";
 import { openDialog } from "./modal";
 
-const FORMATS: YuvFormat[] = ["nv12", "nv21", "i420", "yv12", "p010"];
+const FORMATS: YuvFormat[] = [
+  "nv12",
+  "nv21",
+  "i420",
+  "yv12",
+  "p010",
+  "yuyv",
+  "uyvy",
+  "gray",
+];
 
 export interface SpecModal {
   openManual(options: {

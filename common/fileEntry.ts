@@ -1,4 +1,5 @@
 import { formatFromName, parseSizeCandidates } from "./filenameParser";
+import { isImageFormat } from "./spec";
 import type { EntryInfo, FileRow, SortKey } from "./types";
 
 export function naturalCompare(a: string, b: string): number {
@@ -30,7 +31,8 @@ export function rowsFromEntries(entries: readonly EntryInfo[]): FileRow[] {
     .filter((entry) => !entry.isDir)
     .map((entry) => {
       const format = formatFromName(entry.name) ?? "yuv";
-      const candidate = parseSizeCandidates(entry.name)[0];
+      // JPEG/PNG 的尺寸来自文件头，文件名中的数字不能当作分辨率
+      const candidate = isImageFormat(format) ? undefined : parseSizeCandidates(entry.name)[0];
       return {
         name: entry.name,
         path: entry.path,

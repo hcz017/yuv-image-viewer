@@ -165,7 +165,12 @@ pub async fn pick_files(app: tauri::AppHandle) -> Result<Vec<String>, FsError> {
     let picked = app
         .dialog()
         .file()
-        .add_filter("YUV Images", &SUPPORTED_EXTENSIONS)
+        .add_filter("支持的图像", &SUPPORTED_EXTENSIONS)
+        .add_filter(
+            "YUV 原始帧",
+            &["nv12", "nv21", "i420", "yv12", "p010", "yuv", "yuyv", "uyvy", "gray"],
+        )
+        .add_filter("JPEG / PNG", &["jpg", "jpeg", "png"])
         .blocking_pick_files();
     Ok(picked
         .unwrap_or_default()
@@ -185,15 +190,34 @@ pub async fn pick_directory(app: tauri::AppHandle) -> Result<Option<String>, FsE
         .map(|path| path.to_string_lossy().to_string()))
 }
 
+fn normalize_image_format(format: &str) -> Result<&'static str, FsError> {
+    let lower = format.to_ascii_lowercase();
+    match lower.as_str() {
+        "jpg" | "jpeg" => Ok("jpg"),
+        "png" => Ok("png"),
+        _ => Err(FsError::new(
+            FsErrorKind::NotSupported,
+            format!("不支持的导出格式：{format}"),
+        )),
+    }
+}
+
 #[tauri::command]
 pub async fn pick_export_path(
     app: tauri::AppHandle,
     name: String,
+    format: String,
 ) -> Result<Option<String>, FsError> {
+    let normalized = normalize_image_format(&format)?;
+    let (label, extensions) = if normalized == "png" {
+        ("PNG Image", vec!["png"])
+    } else {
+        ("JPEG Image", vec!["jpg", "jpeg"])
+    };
     Ok(app
         .dialog()
         .file()
-        .add_filter("JPEG Image", &["jpg", "jpeg"])
+        .add_filter(label, &extensions)
         .set_file_name(name)
         .blocking_save_file()
         .and_then(|file| file.into_path().ok())
@@ -201,27 +225,33 @@ pub async fn pick_export_path(
 }
 
 #[tauri::command]
-pub async fn write_jpeg(path: String, data: String) -> Result<(), FsError> {
+pub async fn write_image(path: String, data: String, format: String) -> Result<(), FsError> {
+    let expected = normalize_image_format(&format)?;
     let mut target = require_absolute(&path)?;
     let extension = target
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_ascii_lowercase());
     match extension.as_deref() {
-        Some("jpg") | Some("jpeg") => {}
+        Some("jpg") | Some("jpeg") if expected == "jpg" => {}
+        Some("png") if expected == "png" => {}
         Some(_) => {
             return Err(FsError::new(
                 FsErrorKind::NotSupported,
-                format!("导出路径必须以 .jpg 或 .jpeg 结尾：{}", target.display()),
+                format!(
+                    "导出路径的扩展名与目标格式 {} 不一致：{}",
+                    expected,
+                    target.display()
+                ),
             ))
         }
         None => {
-            target.set_extension("jpg");
+            target.set_extension(expected);
         }
     }
 
     let bytes = STANDARD
         .decode(data)
-        .map_err(|err| FsError::new(FsErrorKind::Io, format!("JPG 数据无效：{err}")))?;
+        .map_err(|err| FsError::new(FsErrorKind::Io, format!("图片数据无效：{err}")))?;
     fs::write(&target, bytes).map_err(|err| FsError::from_io(err, &target))
 }

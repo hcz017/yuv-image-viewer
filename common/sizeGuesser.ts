@@ -1,4 +1,4 @@
-import { expectedBytes, makeSpec } from "./spec";
+import { expectedBytes, isImageFormat, makeSpec } from "./spec";
 import type { Spec, YuvFormat } from "./types";
 
 const RESOLUTIONS: Array<[number, number]> = [
@@ -31,6 +31,9 @@ function align(value: number, alignment: number): number {
 }
 
 export function guessSpecsBySize(fileSize: number, format: YuvFormat): Spec[] {
+  if (isImageFormat(format)) {
+    return [];
+  }
   const found: Array<{ spec: Spec; padding: number }> = [];
   for (const [width, height] of RESOLUTIONS) {
     for (const strideAlign of STRIDE_ALIGNMENTS) {

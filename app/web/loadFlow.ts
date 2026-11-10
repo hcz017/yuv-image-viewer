@@ -1,8 +1,9 @@
 import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { formatFromName } from "../../common/filenameParser";
 import { resolveSpec } from "../../common/resolveSpec";
-import { validateSpec } from "../../common/spec";
+import { isImageFormat, makeSpec, validateSpec } from "../../common/spec";
 import type { Spec, YuvFormat } from "../../common/types";
+import { decodeImageBytes } from "./decodeImage";
 import type { HostApi } from "./host";
 
 export interface LoadDeps {
@@ -31,17 +32,24 @@ export type LoadOutcome =
   | { kind: "cancelled" }
   | { kind: "error"; message: string };
 
+export interface LoadOptions {
+  /** 批量处理时关闭弹窗：无法自动解析的文件直接返回错误。 */
+  interactive?: boolean;
+}
+
 const confirmedLarge = new Set<string>();
 const LARGE_FILE_BYTES = 128 * 1024 * 1024;
 
 export async function loadFile(
   deps: LoadDeps,
   file: string,
-  fallbackFormat: YuvFormat | null
+  fallbackFormat: YuvFormat | null,
+  options: LoadOptions = {}
 ): Promise<LoadOutcome> {
+  const interactive = options.interactive !== false;
   try {
     const stat = await deps.host.statPath(file);
-    if (!stat.is_dir) {
+    if (!stat.is_dir && interactive) {
       if (stat.size > LARGE_FILE_BYTES && !confirmedLarge.has(file)) {
         const confirmed = await deps.confirmLarge(stat.name, stat.size);
         if (!confirmed) {
@@ -49,6 +57,27 @@ export async function loadFile(
         }
         confirmedLarge.add(file);
       }
+    }
+
+    // JPEG/PNG 尺寸与像素来自文件头，跳过规格缓存与字节数推测
+    const imageFormat = fallbackFormat ?? formatFromName(stat.name);
+    if (imageFormat && isImageFormat(imageFormat)) {
+      const imageData = await deps.host.readFileBytes(file);
+      const decoded = await decodeImageBytes(imageData, imageFormat);
+      return {
+        kind: "loaded",
+        file: {
+          spec: makeSpec(
+            decoded.width,
+            decoded.height,
+            decoded.width,
+            decoded.height,
+            imageFormat
+          ),
+          data: decoded.rgba,
+          alignment: "high",
+        },
+      };
     }
 
     // 优先使用与文件路径、大小、修改时间都匹配的缓存规格
@@ -63,6 +92,9 @@ export async function loadFile(
       let format: YuvFormat | null =
         fallbackFormat ?? formatFromName(stat.name);
       if (!format || format === "yuv") {
+        if (!interactive) {
+          return { kind: "error", message: "需要手动指定像素格式" };
+        }
         format = await deps.chooseFormat(stat.name);
         if (!format) {
           return { kind: "cancelled" };
@@ -77,6 +109,9 @@ export async function loadFile(
       });
 
       if (resolution.kind === "chooseFormat") {
+        if (!interactive) {
+          return { kind: "error", message: "需要手动指定像素格式" };
+        }
         const chosen = await deps.chooseFormat(stat.name);
         if (!chosen) {
           return { kind: "cancelled" };
@@ -93,6 +128,9 @@ export async function loadFile(
       if (resolution.kind === "resolved") {
         spec = resolution.spec;
       } else if (resolution.kind === "manual") {
+        if (!interactive) {
+          return { kind: "error", message: resolution.reason };
+        }
         const manual = await deps.askManual(stat.name, stat.size, format, resolution.reason);
         if (!manual) {
           return { kind: "cancelled" };

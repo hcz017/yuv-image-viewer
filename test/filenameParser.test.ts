@@ -6,7 +6,14 @@ test("format comes from the extension", () => {
   assert.equal(formatFromName("frame.nv12"), "nv12");
   assert.equal(formatFromName("FRAME.P010"), "p010");
   assert.equal(formatFromName("frame.yuv"), "yuv");
-  assert.equal(formatFromName("frame.png"), null);
+  assert.equal(formatFromName("frame.yuyv"), "yuyv");
+  assert.equal(formatFromName("frame.UYVY"), "uyvy");
+  assert.equal(formatFromName("frame.gray"), "gray");
+  assert.equal(formatFromName("frame.grey"), "gray");
+  assert.equal(formatFromName("frame.png"), "png");
+  assert.equal(formatFromName("frame.JPG"), "jpg");
+  assert.equal(formatFromName("frame.jpeg"), "jpg");
+  assert.equal(formatFromName("frame.bmp"), null);
   assert.equal(formatFromName("frame"), null);
 });
 
