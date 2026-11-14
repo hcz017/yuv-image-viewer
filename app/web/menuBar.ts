@@ -20,10 +20,6 @@ export interface MenuBarApi {
 export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBarApi {
   container.textContent = "";
 
-  const brand = document.createElement("div");
-  brand.className = "brand";
-  brand.textContent = "YUV Image Viewer";
-
   const menus = document.createElement("div");
   menus.className = "menus";
 
@@ -135,7 +131,7 @@ export function createMenuBar(container: HTMLElement, deps: MenuBarDeps): MenuBa
   menu("文件", fileEntries);
   menu("帮助", () => [item("关于 YUV Image Viewer", deps.showAbout)]);
 
-  container.append(brand, menus);
+  container.append(menus);
 
   document.addEventListener("click", (event) => {
     if (!openPanel) {

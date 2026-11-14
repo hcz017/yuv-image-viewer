@@ -83,13 +83,6 @@ button.primary:hover {
   z-index: 20;
 }
 
-.brand {
-  font-weight: 650;
-  color: var(--brand);
-  margin-right: 12px;
-  letter-spacing: 0.2px;
-}
-
 .menus {
   display: flex;
   gap: 2px;
