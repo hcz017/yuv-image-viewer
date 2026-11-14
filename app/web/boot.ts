@@ -1,3 +1,4 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { initialState, type AppState } from "../../common/appState";
 import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { decodeConfig, encodeConfig, type AppConfig } from "../../common/config";
@@ -29,8 +30,6 @@ import { createSpecModal } from "./specModal";
 import { nextToken, Store } from "./store";
 import { createTree } from "./tree";
 
-const APP_VERSION = "0.4.0";
-
 function required(id: string): HTMLElement {
   const element = document.getElementById(id);
   if (!element) {
@@ -41,7 +40,7 @@ function required(id: string): HTMLElement {
 
 async function main() {
   const host = createHost();
-  const platform = await host.platformInfo();
+  const [platform, appVersion] = await Promise.all([host.platformInfo(), getVersion()]);
   const policy = createPathPolicy(platform);
   const config = decodeConfig(await host.loadConfig());
   const gl = probeGl();
@@ -381,7 +380,7 @@ async function main() {
     },
     showAbout: () => {
       about.show({
-        version: APP_VERSION,
+        version: appVersion,
         platform: platform.os,
         configLocation: platform.config_location,
       });

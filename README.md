@@ -4,8 +4,6 @@
 
 基于 Tauri 2 + 系统 WebView + WebGL2 的跨平台本地 YUV 图像查看器，支持 Windows、macOS 与 Ubuntu。
 
-当前版本：`0.4.0`
-
 界面概览
 
 ![](1.image_list.png)

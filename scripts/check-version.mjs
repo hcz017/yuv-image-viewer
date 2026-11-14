@@ -8,10 +8,14 @@ const cargo = readFileSync(resolve(root, "app/src-tauri/Cargo.toml"), "utf8")
   .match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 const tauri = JSON.parse(readFileSync(resolve(root, "app/src-tauri/tauri.conf.json"), "utf8")).version;
 
-const versions = { "package.json": pkg, "Cargo.toml": cargo, "tauri.conf.json": tauri };
-const unique = new Set(Object.values(versions));
+const versions = {
+  "package.json": pkg,
+  "Cargo.toml": cargo,
+  "tauri.conf.json": tauri ?? "(继承 Cargo.toml)",
+};
+const unique = new Set([pkg, cargo, tauri].filter((value) => value !== undefined));
 console.log(versions);
 if (unique.size !== 1) {
-  console.error("版本号不一致，请同步三处版本");
+  console.error("版本号不一致，请同步 package.json 与 Cargo.toml");
   process.exit(1);
 }
