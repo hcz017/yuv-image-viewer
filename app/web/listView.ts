@@ -129,14 +129,13 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
           if (wasSelected && order.length === 2) {
             entries.push({ label: "YUV 对比", onClick: () => deps.onCompare(order) });
           }
-          entries.push({
-            label: "导出为图片…",
-            onClick: () => deps.onExport(row.path),
-            disabled: wasSelected && order.length > 1,
-          });
-          const renamePath = selectionPath(order);
-          if (renamePath) {
-            entries.push({ label: "重命名", onClick: () => deps.onRename(renamePath) });
+          const singlePath = selectionPath(order);
+          if (singlePath) {
+            entries.push({
+              label: "导出为图片…",
+              onClick: () => deps.onExport(singlePath),
+            });
+            entries.push({ label: "重命名", onClick: () => deps.onRename(singlePath) });
           }
           entries.push({
             label: order.length > 1 ? `删除 (${order.length})` : "删除",
