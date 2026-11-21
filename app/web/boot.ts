@@ -117,13 +117,9 @@ async function main() {
 
   const showBanner = (message: string) => {
     banner.classList.remove("success");
-    if (!message) {
-      banner.textContent = "";
-      banner.classList.add("hidden");
-      return;
-    }
     banner.textContent = message;
-    banner.classList.remove("hidden");
+    banner.title = message;
+    banner.classList.toggle("hidden", message.length === 0);
   };
 
   let successTimer: number | null = null;
@@ -132,6 +128,7 @@ async function main() {
       window.clearTimeout(successTimer);
     }
     banner.textContent = message;
+    banner.title = message;
     banner.classList.remove("hidden");
     banner.classList.add("success");
     successTimer = window.setTimeout(() => {
@@ -1267,7 +1264,9 @@ async function main() {
     if (document.activeElement !== searchInput) {
       searchInput.value = state.filter;
     }
-    errorLine.textContent = state.error ?? "";
+    const errorText = state.error ?? "";
+    errorLine.textContent = errorText;
+    errorLine.title = errorText;
     const title = windowTitle(state.mode.kind === "single" ? policy.basename(state.mode.file) : null);
     if (document.title !== title) {
       document.title = title;
@@ -1369,6 +1368,7 @@ void main().catch((error) => {
   const banner = document.getElementById("banner");
   if (banner) {
     banner.textContent = `启动失败：${String(error)}`;
+    banner.title = banner.textContent;
     banner.classList.remove("hidden");
   }
   console.error(error);

@@ -210,17 +210,17 @@ button.primary:hover {
 }
 
 .banner {
-  padding: 7px 14px;
-  background: #fff4e5;
+  flex: 0 1 auto;
+  max-width: 70%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #8a5a00;
-  border-bottom: 1px solid #f0dcb8;
-  font-size: 12px;
 }
 
 .banner.success {
-  background: var(--brand-soft);
   color: #126a45;
-  border-bottom-color: #c8e6d5;
 }
 
 .layout {
@@ -543,6 +543,7 @@ body.resizing {
   gap: 12px;
   height: 26px;
   padding: 0 12px;
+  overflow: hidden;
   background: var(--panel);
   border-top: 1px solid var(--line);
   font-size: 12px;
@@ -566,6 +567,12 @@ body.resizing {
 }
 
 .notice {
+  flex: 0 1 auto;
+  max-width: 46%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--brand);
 }
 

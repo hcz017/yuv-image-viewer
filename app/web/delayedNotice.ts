@@ -20,6 +20,7 @@ export function createDelayedNotice(element: HTMLElement, delay = 500): DelayedN
       hide();
       timer = window.setTimeout(() => {
         element.textContent = message;
+        element.title = message;
         element.classList.remove("hidden");
         timer = null;
       }, delay);
