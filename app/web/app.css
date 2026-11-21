@@ -522,12 +522,19 @@ body.resizing {
   cursor: grabbing;
 }
 
-.caption {
-  max-width: 38%;
+.pane-label {
+  position: absolute;
+  top: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(13, 16, 19, 0.78);
+  color: #f5f7f8;
+  font-size: 12px;
+  line-height: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text);
 }
 
 .statusbar {

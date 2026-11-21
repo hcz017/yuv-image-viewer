@@ -106,6 +106,40 @@ pub fn rename_path(path: String, new_name: String) -> Result<String, FsError> {
     Ok(target.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct TrashReport {
+    pub removed: Vec<String>,
+    pub failed: Vec<String>,
+}
+
+#[tauri::command]
+pub fn trash_paths(paths: Vec<String>) -> TrashReport {
+    let mut removed = Vec::new();
+    let mut failed = Vec::new();
+    for path in paths {
+        match trash_one(&path) {
+            Ok(target) => removed.push(target),
+            Err(err) => failed.push(err.message),
+        }
+    }
+    TrashReport { removed, failed }
+}
+
+fn trash_one(path: &str) -> Result<String, FsError> {
+    let target = require_absolute(path)?;
+    let meta = fs::metadata(&target).map_err(|err| FsError::from_io(err, &target))?;
+    if meta.is_dir() {
+        return Err(FsError::new(
+            FsErrorKind::NotSupported,
+            format!("不能删除目录：{}", target.display()),
+        ));
+    }
+    trash::delete(&target).map_err(|err| {
+        FsError::new(FsErrorKind::Io, format!("{}：{err}", target.display()))
+    })?;
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 pub fn reveal_path(path: String) -> Result<(), FsError> {
     let target = require_absolute(&path)?;
@@ -207,6 +241,7 @@ pub async fn pick_export_path(
     app: tauri::AppHandle,
     name: String,
     format: String,
+    directory: String,
 ) -> Result<Option<String>, FsError> {
     let normalized = normalize_image_format(&format)?;
     let (label, extensions) = if normalized == "png" {
@@ -214,11 +249,16 @@ pub async fn pick_export_path(
     } else {
         ("JPEG Image", vec!["jpg", "jpeg"])
     };
-    Ok(app
+    let mut dialog = app
         .dialog()
         .file()
         .add_filter(label, &extensions)
-        .set_file_name(name)
+        .set_file_name(name);
+    let start = Path::new(&directory);
+    if start.is_dir() {
+        dialog = dialog.set_directory(start);
+    }
+    Ok(dialog
         .blocking_save_file()
         .and_then(|file| file.into_path().ok())
         .map(|path| path.to_string_lossy().to_string()))

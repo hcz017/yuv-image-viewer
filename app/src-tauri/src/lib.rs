@@ -168,6 +168,7 @@ pub fn run() {
             fsapi::stat_path,
             fsapi::reveal_path,
             fsapi::rename_path,
+            fsapi::trash_paths,
             fsapi::read_file_bytes,
             fsapi::pick_files,
             fsapi::pick_directory,

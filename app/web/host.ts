@@ -25,10 +25,11 @@ export interface HostApi {
   statPath(path: string): Promise<EntryInfoWire>;
   revealPath(path: string): Promise<void>;
   renamePath(path: string, newName: string): Promise<string>;
+  trashPaths(paths: readonly string[]): Promise<{ removed: string[]; failed: string[] }>;
   readFileBytes(path: string): Promise<Uint8Array>;
   pickFiles(): Promise<string[]>;
   pickDirectory(): Promise<string | null>;
-  pickExportPath(name: string, format: string): Promise<string | null>;
+  pickExportPath(name: string, format: string, directory: string): Promise<string | null>;
   writeImage(path: string, data: string, format: string): Promise<void>;
   loadConfig(): Promise<AppConfigWire>;
   saveConfig(config: AppConfigWire): Promise<void>;
@@ -37,6 +38,7 @@ export interface HostApi {
   takePendingPaths(): Promise<string[][]>;
   signalReady(): Promise<boolean>;
   windowGeometry(): Promise<WindowGeometry | null>;
+  setWindowTitle(title: string): Promise<void>;
   onOpenPaths(handler: () => void): Promise<UnlistenFn>;
   onDragDrop(handler: (paths: string[]) => void): Promise<UnlistenFn>;
   onWindowGeometry(handler: () => void): Promise<UnlistenFn>;
@@ -51,13 +53,15 @@ export function createHost(): HostApi {
     statPath: (path) => invoke("stat_path", { path }),
     revealPath: (path) => invoke("reveal_path", { path }),
     renamePath: (path, newName) => invoke("rename_path", { path, newName }),
+    trashPaths: (paths) => invoke("trash_paths", { paths }),
     readFileBytes: async (path) => {
       const result = await invoke<Uint8Array | ArrayBuffer>("read_file_bytes", { path });
       return result instanceof Uint8Array ? result : new Uint8Array(result);
     },
     pickFiles: () => invoke("pick_files"),
     pickDirectory: () => invoke("pick_directory"),
-    pickExportPath: (name, format) => invoke("pick_export_path", { name, format }),
+    pickExportPath: (name, format, directory) =>
+      invoke("pick_export_path", { name, format, directory }),
     writeImage: (path, data, format) => invoke("write_image", { path, data, format }),
     loadConfig: () => invoke("load_config"),
     saveConfig: (cfg) => invoke("save_config", { cfg }),
@@ -65,6 +69,7 @@ export function createHost(): HostApi {
     saveSpecCache: (cache) => invoke("save_spec_cache", { cache }),
     takePendingPaths: () => invoke("take_pending_paths"),
     signalReady: () => invoke("signal_ready"),
+    setWindowTitle: (title) => getCurrentWindow().setTitle(title),
     windowGeometry: async () => {
       const window = getCurrentWindow();
       if (await window.isMinimized()) {

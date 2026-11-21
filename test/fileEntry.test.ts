@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { naturalCompare, neighborPath, rowsFromEntries, sortRows } from "../common/fileEntry";
+import { filterRows, naturalCompare, neighborPath, rowsFromEntries, sortRows } from "../common/fileEntry";
 import type { EntryInfo, FileRow } from "../common/types";
 
 const entry = (name: string, size = 100, isDir = false): EntryInfo => ({
@@ -39,6 +39,23 @@ test("sortRows sorts by size and modified time", () => {
   const rows = [row("a.nv12", 30, 2), row("b.nv12", 10, 1), row("c.nv12", 20, 3)];
   assert.deepEqual(sortRows(rows, "size", false).map((item) => item.name), ["b.nv12", "c.nv12", "a.nv12"]);
   assert.deepEqual(sortRows(rows, "modified", false).map((item) => item.name), ["b.nv12", "a.nv12", "c.nv12"]);
+});
+
+test("filterRows keeps the list order and matches names case-insensitively", () => {
+  const rows = [row("Alpha.nv12"), row("beta.nv12"), row("gamma_alpha.yuv")];
+  assert.deepEqual(
+    filterRows(rows, "  AL ").map((item) => item.name),
+    ["Alpha.nv12", "gamma_alpha.yuv"]
+  );
+  assert.equal(filterRows(rows, "   "), rows);
+});
+
+test("neighborPath walks the filtered list", () => {
+  const rows = [row("a.nv12"), row("b.nv12"), row("ca.nv12")];
+  const visible = filterRows(rows, "a");
+  assert.equal(neighborPath(visible, "/tmp/a.nv12", 1), "/tmp/ca.nv12");
+  assert.equal(neighborPath(visible, "/tmp/ca.nv12", -1), "/tmp/a.nv12");
+  assert.equal(neighborPath(visible, "/tmp/ca.nv12", 1), null);
 });
 
 test("neighborPath respects boundaries without wrapping", () => {

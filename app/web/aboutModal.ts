@@ -12,7 +12,7 @@ const FEATURES = [
   "可将当前图像按原图分辨率导出为 JPG 或 PNG，JPG 可选质量；对比模式可导出 A 或 B，文件列表选中的文件也可直接导出。",
   "支持批量转换为 JPG / PNG，输出到源文件所在目录，同名文件自动跳过。",
   "格式与色彩标准（BT.601 / BT.709）可在工具栏中即时切换。",
-  "文件列表支持排序、多选，右键可在系统文件管理器中定位文件。",
+  "文件列表支持排序、多选；单选时可重命名，选中的文件可移到回收站，右键可在系统文件管理器中定位文件。",
 ];
 
 export function createAboutModal(): { show(deps: AboutModalDeps): void } {
@@ -73,6 +73,8 @@ export function createAboutModal(): { show(deps: AboutModalDeps): void } {
         [`${modifier}+O`, "打开文件"],
         [`${modifier}+Shift+O`, "打开文件夹"],
         [`${modifier}+Shift+E`, "导出为 JPG"],
+        ["F2", "重命名（文件列表，仅单选）"],
+        ["Delete", "移到回收站（文件列表）"],
         ["← / →", "上一张 / 下一张（大图模式）"],
         ["F", "适合窗口"],
         ["1", "实际大小（1:1）"],

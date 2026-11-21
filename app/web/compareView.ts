@@ -33,7 +33,11 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
 
   const canvas = document.createElement("canvas");
   canvas.className = "gl-canvas";
-  element.append(canvas);
+  const labelA = document.createElement("div");
+  labelA.className = "pane-label hidden";
+  const labelB = document.createElement("div");
+  labelB.className = "pane-label hidden";
+  element.append(canvas, labelA, labelB);
 
   let rendererA: Renderer | null = null;
   let rendererB: Renderer | null = null;
@@ -67,7 +71,27 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
     return splitStage(canvas.width, canvas.height, Math.round(8 * dpr()));
   }
 
+  function syncLabels() {
+    const width = canvas.clientWidth || element.clientWidth;
+    const panes = splitStage(Math.max(1, width), 1, 8);
+    const place = (
+      label: HTMLElement,
+      image: ComparePane | null,
+      pane: { x: number; width: number }
+    ) => {
+      const name = image?.name ?? "";
+      label.textContent = name;
+      label.title = image?.path ?? "";
+      label.classList.toggle("hidden", name.length === 0);
+      label.style.left = `${pane.x + 8}px`;
+      label.style.maxWidth = `${Math.max(48, pane.width - 16)}px`;
+    };
+    place(labelA, imageA, panes.a);
+    place(labelB, imageB, panes.b);
+  }
+
   function resize() {
+    syncLabels();
     const scale = dpr();
     const width = Math.max(1, Math.round(canvas.clientWidth * scale));
     const height = Math.max(1, Math.round(canvas.clientHeight * scale));
@@ -393,6 +417,7 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
         rendererB = uploadPane("b");
       }
       pendingFit = true;
+      syncLabels();
       if (canvas.width > 1 && canvas.height > 1) {
         pendingFit = false;
         fit();
@@ -452,6 +477,7 @@ export function createCompareView(deps: CompareViewDeps): CompareViewApi {
       rendererB?.disposeTextures();
       uploadPane("a");
       uploadPane("b");
+      syncLabels();
       redraw();
     },
     redraw,

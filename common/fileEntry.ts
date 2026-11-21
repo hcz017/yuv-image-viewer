@@ -63,6 +63,14 @@ export function sortRows(rows: readonly FileRow[], key: SortKey, desc: boolean):
   return desc ? sorted.reverse() : sorted;
 }
 
+export function filterRows(rows: readonly FileRow[], filter: string): readonly FileRow[] {
+  const needle = filter.trim().toLowerCase();
+  if (!needle) {
+    return rows;
+  }
+  return rows.filter((row) => row.name.toLowerCase().includes(needle));
+}
+
 export function neighborPath(
   rows: readonly FileRow[],
   currentPath: string,

@@ -1,4 +1,6 @@
 import type { AppState } from "../../common/appState";
+import { filterRows } from "../../common/fileEntry";
+import { selectionPath } from "../../common/listActions";
 import { formatBytes, formatLabel, formatTime, specText } from "../../common/listMeta";
 import type { PathPolicy } from "../../common/pathPolicy";
 import { applySelection, type SelectMode } from "../../common/selectionModel";
@@ -18,6 +20,7 @@ export interface ListDeps {
   onSort: (key: SortKey) => void;
   onReveal: (path: string) => void;
   onRename: (path: string) => void;
+  onDelete: (paths: readonly string[]) => void;
   revealLabel: string;
 }
 
@@ -69,10 +72,8 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
 
   return {
     render(state, rows) {
-      const needle = state.filter.trim().toLowerCase();
-      const visibleRows = needle
-        ? rows.filter((row) => row.name.toLowerCase().includes(needle))
-        : rows;
+      const needle = state.filter.trim();
+      const visibleRows = filterRows(rows, state.filter);
       currentState = state;
       currentRows = visibleRows;
       body.textContent = "";
@@ -133,7 +134,14 @@ export function createListView(container: HTMLElement, deps: ListDeps): ListView
             onClick: () => deps.onExport(row.path),
             disabled: wasSelected && order.length > 1,
           });
-          entries.push({ label: "重命名", onClick: () => deps.onRename(row.path) });
+          const renamePath = selectionPath(order);
+          if (renamePath) {
+            entries.push({ label: "重命名", onClick: () => deps.onRename(renamePath) });
+          }
+          entries.push({
+            label: order.length > 1 ? `删除 (${order.length})` : "删除",
+            onClick: () => deps.onDelete(order),
+          });
           entries.push({ label: deps.revealLabel, onClick: () => deps.onReveal(row.path) });
           showContextMenu(event.clientX, event.clientY, entries);
         };

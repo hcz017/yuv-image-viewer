@@ -3,8 +3,9 @@ import { initialState, type AppState } from "../../common/appState";
 import { detectP010Alignment, type P010Alignment } from "../../common/bitdepth";
 import { decodeConfig, encodeConfig, type AppConfig } from "../../common/config";
 import { exportFileName, replaceExtension } from "../../common/exportName";
-import { neighborPath, rowsFromEntries, sortRows } from "../../common/fileEntry";
+import { filterRows, neighborPath, rowsFromEntries, sortRows } from "../../common/fileEntry";
 import { parseSizeCandidates } from "../../common/filenameParser";
+import { deleteConfirmMessage, selectionPath, windowTitle } from "../../common/listActions";
 import { formatBytes } from "../../common/listMeta";
 import { createPathPolicy, type PathPolicy } from "../../common/pathPolicy";
 import { pushRecentDir } from "../../common/recentDirs";
@@ -62,7 +63,6 @@ async function main() {
   const searchControl = required("search-control");
   const searchInput = required("search") as HTMLInputElement;
   const readout = required("readout");
-  const fileCaption = required("file-caption");
   const errorLine = required("error");
   const noticeElement = required("notice");
   const scaleLabel = required("scale");
@@ -95,6 +95,7 @@ async function main() {
   let saveTimer: number | null = null;
   // 批量转换进行中禁止再次触发（菜单项与快捷键共用）
   let batchRunning = false;
+  let deleteRunning = false;
 
   const notice = createDelayedNotice(noticeElement, 500);
   const specModal = createSpecModal(document.body);
@@ -395,24 +396,17 @@ async function main() {
   };
 
   const refreshAfterRename = async (fromPath: string, toPath: string) => {
-    const state = store.get();
-    if (state.mode.kind !== "list") {
+    const reloaded = await refreshCurrentList();
+    if (!reloaded) {
       return;
     }
-    const token = nextToken();
-    store.dispatch({ type: "requestStarted", token });
-    const entries = await host.listDirEntries(state.dir);
-    const rows = sortRows(rowsFromEntries(entries.map(fromWireEntry)), state.sortKey, state.sortDesc);
-    if (store.get().generation !== token) {
-      return;
-    }
-    store.dispatch({ type: "openDir", token, dir: state.dir, rows });
+    const { state, rows } = reloaded;
+    const present = new Set(rows.map((row) => policy.key(row.path)));
     const remap = (path: string) => (policy.key(path) === policy.key(fromPath) ? toPath : path);
-    const order = state.selectionOrder.map(remap);
-    const kept = order.filter((path) => rows.some((row) => policy.key(row.path) === policy.key(path)));
+    const order = state.selectionOrder.map(remap).filter((path) => present.has(policy.key(path)));
     store.dispatch({
       type: "select",
-      order: kept,
+      order,
       anchor: state.selectionAnchor ? remap(state.selectionAnchor) : null,
     });
   };
@@ -434,6 +428,80 @@ async function main() {
       await refreshAfterRename(path, newPath);
     } catch (error) {
       showBanner(`已重命名，但刷新列表失败：${errorMessage(error)}`);
+    }
+  };
+
+  const refreshAfterDelete = async (removed: readonly string[]) => {
+    if (removed.length === 0) {
+      return;
+    }
+    const reloaded = await refreshCurrentList();
+    if (!reloaded) {
+      return;
+    }
+    const { state, rows } = reloaded;
+    const removedKeys = new Set(removed.map((path) => policy.key(path)));
+    const present = new Set(rows.map((row) => policy.key(row.path)));
+    const order = state.selectionOrder.filter(
+      (path) => !removedKeys.has(policy.key(path)) && present.has(policy.key(path))
+    );
+    const anchorPath = state.selectionAnchor;
+    const anchor =
+      anchorPath && order.some((path) => policy.key(path) === policy.key(anchorPath))
+        ? anchorPath
+        : (order[0] ?? null);
+    store.dispatch({ type: "select", order, anchor });
+  };
+
+  const deleteFiles = async (paths: readonly string[]) => {
+    if (deleteRunning || store.get().mode.kind !== "list") {
+      return;
+    }
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const path of paths) {
+      const key = policy.key(path);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      unique.push(path);
+    }
+    const message = deleteConfirmMessage(unique.map((path) => policy.basename(path)));
+    if (!message) {
+      return;
+    }
+    const confirmed = await withModal(async () => window.confirm(message));
+    if (!confirmed || store.get().mode.kind !== "list") {
+      return;
+    }
+    deleteRunning = true;
+    try {
+      const report = await host.trashPaths(unique);
+      let refreshError: string | null = null;
+      try {
+        await refreshAfterDelete(report.removed);
+      } catch (error) {
+        refreshError = errorMessage(error);
+      }
+      if (report.failed.length > 0) {
+        const detail = report.failed[0];
+        showBanner(
+          report.removed.length > 0
+            ? `已移到回收站 ${report.removed.length} 个，另有 ${report.failed.length} 个失败：${detail}`
+            : `删除失败：${detail}`
+        );
+      } else if (refreshError) {
+        showBanner(`文件已移到回收站，但刷新列表失败：${refreshError}`);
+      } else if (report.removed.length === 1) {
+        showSuccess(`已将 ${policy.basename(report.removed[0])} 移到回收站`);
+      } else if (report.removed.length > 1) {
+        showSuccess(`已将 ${report.removed.length} 个文件移到回收站`);
+      }
+    } catch (error) {
+      showBanner(`删除失败：${errorMessage(error)}`);
+    } finally {
+      deleteRunning = false;
     }
   };
 
@@ -461,6 +529,9 @@ async function main() {
     onReveal: reveal,
     onRename: (path) => {
       void renameFile(path);
+    },
+    onDelete: (paths) => {
+      void deleteFiles(paths);
     },
     revealLabel: revealFileLabel,
   });
@@ -611,7 +682,12 @@ async function main() {
 
     let target: string | null;
     try {
-      target = await host.pickExportPath(exportFileName(image.name, choice.format), choice.format);
+      const directory = image.path ? policy.parent(image.path) : state.dir;
+      target = await host.pickExportPath(
+        exportFileName(image.name, choice.format),
+        choice.format,
+        directory
+      );
     } catch (error) {
       showBanner(`无法选择保存位置：${errorMessage(error)}`);
       return;
@@ -684,19 +760,20 @@ async function main() {
     }
   };
 
-  async function refreshCurrentList() {
+  async function refreshCurrentList(): Promise<{ state: AppState; rows: FileRow[] } | null> {
     const state = store.get();
     if (state.mode.kind !== "list") {
-      return;
+      return null;
     }
     const token = nextToken();
     store.dispatch({ type: "requestStarted", token });
     const entries = await host.listDirEntries(state.dir);
     const rows = sortRows(rowsFromEntries(entries.map(fromWireEntry)), state.sortKey, state.sortDesc);
     if (store.get().generation !== token) {
-      return;
+      return null;
     }
     store.dispatch({ type: "openDir", token, dir: state.dir, rows });
+    return { state, rows };
   }
 
   async function batchConvert() {
@@ -951,26 +1028,17 @@ async function main() {
     if (state.mode.kind !== "single") {
       return;
     }
-    const next = neighborPath(state.rows, state.displayedFile ?? state.mode.file, delta);
+    const next = neighborPath(
+      filterRows(state.rows, state.filter),
+      state.displayedFile ?? state.mode.file,
+      delta
+    );
     if (next) {
       void openFlow.open([next]);
     }
   };
 
   const activeView = () => (store.get().mode.kind === "compare" ? compare : single);
-
-  const captionOf = (mode: AppState["mode"]): { text: string; title: string } => {
-    if (mode.kind === "single") {
-      return { text: policy.basename(mode.file), title: mode.file };
-    }
-    if (mode.kind === "compare") {
-      return {
-        text: `A  ${policy.basename(mode.a)}    |    B  ${policy.basename(mode.b)}`,
-        title: `A: ${mode.a}\nB: ${mode.b}`,
-      };
-    }
-    return { text: "", title: "" };
-  };
 
   const currentConfig = (geometry: AppConfig["window"]): AppConfig => {
     const state = store.get();
@@ -1114,6 +1182,23 @@ async function main() {
       return;
     }
 
+    if (event.key === "F2") {
+      const path = state.mode.kind === "list" ? selectionPath(state.selectionOrder) : null;
+      if (path) {
+        event.preventDefault();
+        void renameFile(path);
+      }
+      return;
+    }
+
+    if (event.key === "Delete") {
+      if (state.mode.kind === "list" && state.selectionOrder.length > 0) {
+        event.preventDefault();
+        void deleteFiles(state.selectionOrder);
+      }
+      return;
+    }
+
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       if (state.mode.kind === "single") {
         event.preventDefault();
@@ -1183,9 +1268,11 @@ async function main() {
       searchInput.value = state.filter;
     }
     errorLine.textContent = state.error ?? "";
-    const caption = captionOf(state.mode);
-    fileCaption.textContent = caption.text;
-    fileCaption.title = caption.title;
+    const title = windowTitle(state.mode.kind === "single" ? policy.basename(state.mode.file) : null);
+    if (document.title !== title) {
+      document.title = title;
+      void host.setWindowTitle(title);
+    }
 
     if (kind === "list" && lastModeKind !== "list") {
       single.clear();
